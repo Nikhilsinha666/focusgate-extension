@@ -1,0 +1,30 @@
+{
+  "$schema": "https://kiro.dev/schemas/power-plugin.json",
+  "name": "focusgate-extension-power",
+  "version": "1.0.0",
+  "displayName": "FocusGate Chrome Extension Tools",
+  "description": "Packaged Kiro Power bundling Manifest V3 auditing skills, property-test runners, and DevTools MCP configuration.",
+  "author": "Nikhilsinha666",
+  "repository": "https://github.com/Nikhilsinha666/focusgate-extension",
+  "skills": [
+    {
+      "name": "manifest-auditor",
+      "description": "Audits Chrome MV3 extensions for CSP, permissions, and security hygiene.",
+      "file": "skills/manifest-auditor.md"
+    }
+  ],
+  "mcp": {
+    "server": "chrome-devtools-inspector",
+    "description": "Browser automation and DevTools protocol debugging MCP."
+  },
+  "resources": [
+    {
+      "name": "focusgate-spec",
+      "path": "../../specs/focusgate-spec.md"
+    },
+    {
+      "name": "extension-rules",
+      "path": "../../steering/extension-rules.md"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://kiro.dev/schemas/cloud-config.json",
+  "version": "1.0",
+  "cloudSession": {
+    "name": "focusgate-cloud-dev",
+    "runtime": "node20",
+    "headlessTesting": true,
+    "environment": {
+      "NODE_ENV": "development",
+      "CHROME_BIN": "/usr/bin/google-chrome-stable"
+    },
+    "lifecycle": {
+      "onCreate": "node -v && echo 'Initializing FocusGate Cloud Session'",
+      "onSessionStart": "node tests/timer-and-urls.property.test.js"
+    },
+    "web": {
+      "port": 8080,
+      "preview": "viewer.html"
+    }
+  }
+}
