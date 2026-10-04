@@ -1,0 +1,1091 @@
+#focusgate-floating-timer {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483647;
+  /* The floor, and the fallback. The real width is written inline by applyCamSize in content.js,
+     because the camera preview's size is a setting now and the card is sized from it — so this
+     value is what the card is before that runs, and what it stays at when there is no preview in
+     it at all. 136px is not arbitrary: it is what the ＋ row needs, and since the card is
+     `overflow: hidden` anything narrower silently loses that row's ✕ off the right edge. The sum
+     is written out beside the widths it is about, further down. */
+  width: 136px;
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  user-select: none;
+  display: none;
+  border: 1px solid #1e293b;
+  overflow: hidden;
+}
+#focusgate-floating-timer.fg-minimized .fg-body { display: none; }
+/* Minimised is the handle alone, and the handle's own contents set its floor: a dot, three 14px
+   controls and the gaps between them. 106px leaves the name about 40px.
+   Also only a fallback: an inline width beats this rule, so CARD_MINI_W in content.js is the
+   number that actually applies and the two have to be kept in step. */
+#focusgate-floating-timer.fg-minimized { width: 106px; }
+/* Slim, quiet header: a state dot, the target's name on one line, two controls */
+/* Gap and padding pulled in a notch against the narrower card. The dot and the controls are
+   fixed widths, so every pixel spent here comes straight off the target's name — which is the
+   one thing in this strip that has something to say. */
+#focusgate-floating-timer .fg-handle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  background: #111c33;
+  border-bottom: 1px solid #1e293b;
+  cursor: move;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+#focusgate-floating-timer .fg-dot {
+  width: 6px; height: 6px; border-radius: 999px; background: #f59e0b; flex: none;
+}
+#focusgate-floating-timer .fg-title {
+  flex: 1; font-size: 10px; letter-spacing: .2px; color: #cbd5e1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#focusgate-floating-timer .fg-x,
+#focusgate-floating-timer .fg-min,
+#focusgate-floating-timer .fg-rst,
+#focusgate-floating-timer .fg-pop {
+  cursor: pointer; flex: none; width: 14px; text-align: center; font-size: 11px;
+  line-height: 14px; color: #64748b; border-radius: 4px;
+}
+/* Amber, alone among the handle's controls. The other three manage the window and are meant to be
+   quiet; this one is an undo, and it is only on screen at all because the size has been changed from
+   the shipped one — so it is the glyph in that row worth noticing.
+   Its `display` is written inline by applyCamSize, which beats this file, so nothing here decides
+   whether it is visible — only what it looks like when it is. */
+#focusgate-floating-timer .fg-rst { color: #f59e0b; }
+#focusgate-floating-timer .fg-rst:hover { color: #0b1020; background: #f59e0b; }
+#focusgate-floating-timer.fg-minimized .fg-rst { display: none !important; }
+/* .fg-rst is deliberately NOT in this list — it has its own amber hover above, and listing it here
+   too would leave a declaration that never applies. */
+#focusgate-floating-timer .fg-x:hover,
+#focusgate-floating-timer .fg-pop:hover, #focusgate-floating-timer .fg-min:hover {
+  color: #e2e8f0; background: #1e293b;
+}
+
+/* Camera preview, inside the same card as the clock */
+#focusgate-floating-timer .fg-cam { position: relative; background: #000; line-height: 0; }
+#focusgate-floating-timer .fg-cam iframe {
+  display: block; width: 100%; aspect-ratio: 4 / 3; border: 0; background: #000;
+}
+/* Shown only when the frame above couldn't be drawn by this document, so a black
+   box is never left standing there with no explanation.
+   The only length on this card that scales through the custom property rather than being written
+   inline by applyCamSize: it is a paragraph rather than a control, so a rule reads better than two
+   more lines of JS. `--fg-k` is set on the card; the fallback of 1 is what a stale stylesheet or a
+   card built before the first measurement gets. */
+#focusgate-floating-timer .fg-cam-note {
+  position: absolute; inset: 0; display: none;
+  padding: calc(8px * var(--fg-k, 1)); box-sizing: border-box;
+  align-items: center; justify-content: center;
+  font-size: calc(9.5px * var(--fg-k, 1)); line-height: 1.35; color: #cbd5e1; text-align: center;
+  background: #0b1020;
+}
+#focusgate-floating-timer .fg-cam-dot {
+  position: absolute; right: 5px; bottom: 5px; width: 16px; height: 16px; border-radius: 999px;
+  font-size: 10px; line-height: 16px; font-weight: 800; text-align: center; color: #fff;
+  background: rgba(15, 23, 42, .9); box-shadow: 0 1px 5px rgba(0, 0, 0, .6);
+}
+#focusgate-floating-timer .fg-cam.fgc-ok .fg-cam-dot { background: #16a34a; }
+#focusgate-floating-timer .fg-cam.fgc-bad .fg-cam-dot { background: #dc2626; }
+#focusgate-floating-timer .fg-cam.fgc-wait .fg-cam-dot { background: #ca8a04; }
+#focusgate-floating-timer.fg-minimized .fg-cam { display: none !important; }
+/* The transparent grab band over the camera picture. Every declaration it needs is also inline on
+   the element — see the note in the markup — because the whole point of it is to work on documents
+   that never received this stylesheet. */
+/* 26px, down from 30px: the band has to start below the camera's own switch discs, and those
+   are 17px tall at a 4px inset now (21px) rather than 19px at 4px (23px). Kept in step so the
+   grab area stays the same share of a preview that is shorter than it was. */
+#focusgate-floating-timer .fg-camgrab {
+  position: absolute; left: 0; right: 0; top: 26px; bottom: 0; cursor: move;
+}
+/* The card is dragged from anywhere on it, so the whole card says so. The controls set their own
+   cursor back to a pointer and the number field to a caret, so what is pressable still looks it. */
+#focusgate-floating-timer { cursor: move; }
+/* 7px of side padding rather than 10px: the ＋ row below has to fit inside whatever this leaves,
+   and on a 136px card 10px either side left it too little to hold its four controls. */
+#focusgate-floating-timer .fg-body { padding: 7px 7px 9px; text-align: center; cursor: move; }
+/* The clock with its two controls either side. The number keeps the middle to itself and
+   stays centred in the card whichever controls are showing: both flanks are the same width
+   and neither ever leaves the layout — ＋ goes invisible rather than absent, so the digits
+   don't shift sideways the moment the work is finished. */
+#focusgate-floating-timer .fg-clockrow {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+/* 22px rather than 26px, kept in proportion to the narrower card: the two 22px controls either
+   side and the gaps take 52px of the 120px the body leaves, so the digits have 68px to sit in and
+   26px digits no longer fitted a "59:59".
+   `min-width: 0` is the guard for the one string that still cannot fit — an hours-long goal reading
+   "1:23:45" — and it matters because the card is `overflow: hidden`. Without it a flex item refuses
+   to shrink below its own content, so the row grows and quietly pushes ＋ off the right edge; with
+   it the box shrinks and the controls stay where you are about to press them. */
+#focusgate-floating-timer .fg-time {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+}
+/* Bigger than the 14px window buttons up in the handle, because they are next to 26px
+   digits now and a control the size of a minimise glyph beside them reads as a speck. */
+#focusgate-floating-timer .fg-brk,
+#focusgate-floating-timer .fg-add {
+  cursor: pointer; flex: none;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  font-size: 12px; line-height: 1;
+  color: #94a3b8; background: #131c30;
+  border: 1px solid #24344f; border-radius: 6px;
+  user-select: none;
+}
+/* Blue on hover, not amber: blue is already this card's colour for a break — the dot, the
+   digits and the button itself all turn blue once one is running (see .fg-break below), so
+   the button should preview the state it is about to put you in. Amber belongs to ＋. */
+#focusgate-floating-timer .fg-brk:hover {
+  color: #0b1020; background: #60a5fa; border-color: #3b82f6;
+}
+#focusgate-floating-timer .fg-brk:focus-visible,
+#focusgate-floating-timer .fg-add:focus-visible {
+  outline: 2px solid #f59e0b; outline-offset: 1px;
+}
+/* Only shown when something has stopped the clock */
+#focusgate-floating-timer .fg-label {
+  font-size: 9px;
+  letter-spacing: .3px;
+  color: #fca5a5;
+  margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#focusgate-floating-timer .fg-label:empty { display: none; }
+/* The time limit, counting down while you work. Amber, because the rest of this extension uses amber for
+   "the clock is against you" — the red below is reserved for the moment it has actually run out.
+   Tabular digits, or a card 136px wide would twitch sideways every second as the minutes tick over.
+   `:empty` hides it, the same rule the stop label follows: a target with no limit costs no height. */
+#focusgate-floating-timer .fg-glimit {
+  font-size: 10px; letter-spacing: .2px; margin-top: 1px;
+  color: #fcd34d; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#focusgate-floating-timer .fg-glimit:empty { display: none; }
+#focusgate-floating-timer .fg-glimit.fg-glimit-out { color: #fca5a5; }
+#focusgate-floating-timer.fg-done .fg-time { color: #4ade80; }
+#focusgate-floating-timer.fg-done .fg-dot { background: #22c55e; }
+/* There's nothing to close until the work is done, so the ✕ isn't there until it is.
+   Red, and it used to be green. Green was arguing that closing a finished card is the reward rather
+   than a way out, which is true — but it is not what the colour has to do here. Two reasons it lost:
+   a green ✕ sits directly beside a green clock and a green dot on a finished card, so the one control
+   in that row is the hardest thing in it to find; and ✕ means close everywhere else a person has ever
+   used a computer, and close is red. A control whose colour has to be explained is the wrong colour. */
+#focusgate-floating-timer .fg-x { display: none; }
+#focusgate-floating-timer.fg-done .fg-x { display: block; color: #f87171; }
+#focusgate-floating-timer.fg-done .fg-x:hover { color: #fff1f2; background: #ef4444; }
+
+/* ＋ keeps the ✕'s timing: there is nothing to extend until the work is done either. Amber
+   rather than red, because the two say opposite things — the red ✕ accepts the day and shuts up
+   shop, the amber ＋ reopens it.
+   Colour only. WHETHER it is on screen is set inline by setUI, deliberately: a rule here
+   cannot hide a button on a tab whose stylesheet predates the button existing, and a control
+   that lets you reopen a finished day is not one to leave showing by accident. */
+#focusgate-floating-timer.fg-done .fg-add {
+  color: #fbbf24; border-color: rgba(251, 191, 36, .5);
+}
+#focusgate-floating-timer.fg-done .fg-add:hover { color: #0b1020; background: #f59e0b; }
+/* The row ＋ opens. Inside the body rather than hanging off the handle, because a 136px card
+   has no room beside four controls and a name — and it belongs with the clock it changes. */
+#focusgate-floating-timer .fg-ask {
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+  margin-top: 7px; padding-top: 7px; border-top: 1px solid #1e293b;
+}
+#focusgate-floating-timer .fg-ask[hidden] { display: none; }
+/* The row has to fit inside a 136px card with 7px of body padding either side, so 120px, and
+   the card is `overflow: hidden` — anything wider silently loses the ✕ off the right edge.
+   With border-box the widths below are the real ones: 42 + 26 + 16 + 16 and three 3px gaps is
+   109px. Worth redoing that sum before widening anything in this row.
+   (It was 50 + 30 + 18 + 18 and 4px gaps = 128px against the old 158px card, which is why every
+   number in it moved when the card narrowed rather than only the card.)
+   box-sizing is set here rather than inherited, because the card deliberately does not impose
+   it on a page whose own reset may have. */
+#focusgate-floating-timer .fg-ask-min {
+  box-sizing: border-box; flex: none;
+  width: 42px; padding: 3px 3px; text-align: center;
+  font: inherit; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: #f1f5f9; background: #0b1020;
+  border: 1px solid #2b3d5c; border-radius: 6px;
+  -moz-appearance: textfield; appearance: textfield;
+  /* Chrome's own stylesheet leaves `cursor` alone on a text field, so it inherits — and the card
+     now sets `move` on itself. Without this the one thing on the card you type into would be the
+     one thing wearing a "drag me" cursor. */
+  cursor: text;
+}
+#focusgate-floating-timer .fg-ask-min::-webkit-outer-spin-button,
+#focusgate-floating-timer .fg-ask-min::-webkit-inner-spin-button {
+  -webkit-appearance: none; appearance: none; margin: 0;
+}
+#focusgate-floating-timer .fg-ask-min:focus { outline: 2px solid #f59e0b; outline-offset: 0; }
+/* The unit is a switch, not a caption: press it to swap minutes for seconds. So it gets a
+   surface to be pressed on — a bare word beside a number reads as a label, and a label is the
+   one thing nobody tries to click. Amber on hover, like every other control on this card that
+   changes what the clock is doing. */
+#focusgate-floating-timer .fg-ask-unit {
+  box-sizing: border-box;
+  cursor: pointer; flex: none;
+  width: 26px; padding: 2px 2px;
+  text-align: center;
+  font-size: 10px; font-weight: 800; line-height: 1;
+  color: #94a3b8; background: #131c30;
+  border: 1px solid #2b3d5c; border-radius: 5px;
+  user-select: none;
+}
+#focusgate-floating-timer .fg-ask-unit:hover { color: #0b1020; background: #f59e0b; border-color: #f59e0b; }
+#focusgate-floating-timer .fg-ask-unit:focus-visible { outline: 2px solid #f59e0b; outline-offset: 0; }
+#focusgate-floating-timer .fg-ask-ok,
+#focusgate-floating-timer .fg-ask-no {
+  cursor: pointer; flex: none; width: 16px; height: 16px;
+  display: grid; place-items: center;
+  font-size: 11px; line-height: 1; border-radius: 5px;
+  color: #64748b; background: #131c30;
+}
+#focusgate-floating-timer .fg-ask-ok { color: #4ade80; }
+#focusgate-floating-timer .fg-ask-ok:hover { color: #0b1020; background: #22c55e; }
+#focusgate-floating-timer .fg-ask-no:hover { color: #e2e8f0; background: #1e293b; }
+/* Refused: the number in the box is below the floor or past the day-long ceiling. Greyed
+   rather than removed, so the tick stays where you are about to press it. */
+#focusgate-floating-timer .fg-ask-ok.fg-off {
+  color: #475569; background: #101827; cursor: not-allowed;
+}
+#focusgate-floating-timer .fg-ask-ok.fg-off:hover { color: #475569; background: #101827; }
+
+/* Paused (user inactive) */
+#focusgate-floating-timer.fg-paused .fg-time { color: #94a3b8; }
+#focusgate-floating-timer.fg-paused .fg-dot { background: #64748b; }
+
+/* On a break you asked for. Deliberately obvious — a break you forget to end is
+   just lost time, so the card should keep saying so. The ▶ is the way back. */
+#focusgate-floating-timer.fg-break { border-color: rgba(96,165,250,.55); }
+#focusgate-floating-timer.fg-break .fg-dot {
+  background: #60a5fa;
+  animation: fgBreathe 2.2s ease-in-out infinite;
+}
+#focusgate-floating-timer.fg-break .fg-time { color: #93c5fd; }
+#focusgate-floating-timer.fg-break .fg-brk {
+  color: #0b1020; background: #60a5fa; font-weight: 800;
+  /* The button carries a border of its own now that it lives beside the clock, and left at
+     the resting slate it outlined a blue disc in grey. */
+  border-color: rgba(96, 165, 250, .85);
+}
+#focusgate-floating-timer.fg-break .fg-brk:hover { background: #93c5fd; border-color: #93c5fd; }
+@keyframes fgBreathe { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  #focusgate-floating-timer.fg-break .fg-dot { animation: none; }
+}
+
+/* ---------- Celebration ---------- */
+.fg-reward {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(.6); z-index: 2147483647;
+  background: #0f172a; color: #f1f5f9; padding: 28px 36px; border-radius: 18px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 0 1px #f97316 inset;
+  opacity: 0; transition: transform .5s cubic-bezier(.34,1.56,.64,1), opacity .35s ease;
+  min-width: 280px; pointer-events: none;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.fg-reward.fg-show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.fg-reward.fg-big { box-shadow: 0 20px 80px rgba(0,0,0,.6), 0 0 0 2px #eab308 inset; padding: 40px 56px; min-width: 340px; }
+.fg-reward-emoji { font-size: 64px; line-height: 1; margin-bottom: 10px; animation: fg-bounce .55s ease infinite alternate; }
+.fg-reward-title {
+  font-size: 26px; font-weight: 900; letter-spacing: .3px;
+  background: linear-gradient(90deg,#f97316,#eab308);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.fg-reward-sub { font-size: 13px; color: #cbd5e1; margin-top: 6px; max-width: 320px; }
+.fg-reward-xp { margin-top: 14px; font-size: 18px; font-weight: 800; color: #4ade80; letter-spacing: .5px; }
+@keyframes fg-bounce { from { transform: translateY(0) scale(1); } to { transform: translateY(-10px) scale(1.05); } }
+
+.fg-confetti-container {
+  position: fixed; inset: 0; pointer-events: none; z-index: 2147483646; overflow: hidden;
+}
+.fg-confetti {
+  position: absolute; top: -14px; width: 10px; height: 14px; border-radius: 2px;
+  animation: fg-fall linear forwards;
+  transform: rotate(var(--rot, 0deg));
+}
+@keyframes fg-fall {
+  0%   { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(var(--rot, 720deg)); opacity: .2; }
+}
+
+/* The camera used to be its own floating box; it now sits inside the timer card
+   above, so those styles are gone. */
+
+/* The timer-speed badge, bottom left of the camera strip — opposite the camera dot, which
+   answers a different question: that one is "can it see me", this one is "how fast is that
+   counting". Drawn on the CARD rather than only inside the camera frame, because some documents
+   refuse to draw that frame at all (see .fg-cam-note) and a feature whose only evidence is
+   inside it would be invisible exactly there.
+
+   Every declaration here is also inline on the element. Not duplication for its own sake: Chrome
+   only injects this stylesheet as a page loads, so a tab that was already open when the extension
+   reloaded runs the new script against the previous sheet — in which this class does not exist.
+   The colours are set from the script anyway, since they follow the reading. */
+#focusgate-floating-timer .fg-pace {
+  position: absolute; left: 5px; bottom: 5px; z-index: 2;
+  padding: 0 5px; border-radius: 6px;
+  font-size: 10px; line-height: 16px; font-weight: 800;
+  color: #e2e8f0; background: rgba(15, 23, 42, .9);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, .6);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+#focusgate-floating-timer.fg-minimized .fg-pace { display: none !important; }
+
+/* ---- resizing the camera from any side of the card ----
+   Eight zones: four edges and four corners, which is what every resizable window offers and
+   therefore what somebody reaches for without being told.
+   They live at the CARD's boundary, not inside the camera picture. The first version put one grip at
+   the bottom-right of the preview, halfway down the card, where reaching for "the edge" landed on the
+   drag surface and moved the card instead.
+   Inside the box rather than straddling it, because the card hides its overflow and anything hanging
+   outside would be clipped away.
+   Whether they are on screen is set inline by applyCamSize: with no preview there is nothing whose
+   size they would change. */
+#focusgate-floating-timer .fg-rz {
+  position: absolute;
+  z-index: 6;
+  /* The drag must not be taken over by the page's scrolling on a touch screen. */
+  touch-action: none;
+}
+/* The four edges. They stop 12px short at each end so the corners own those, which is what makes a
+   corner drag read as "both directions" rather than as whichever edge happened to be on top. */
+#focusgate-floating-timer .fg-rz-n { left: 12px; right: 12px; top: 0; height: 5px; cursor: ns-resize; }
+#focusgate-floating-timer .fg-rz-s { left: 12px; right: 12px; bottom: 0; height: 6px; cursor: ns-resize; }
+#focusgate-floating-timer .fg-rz-w { left: 0; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+#focusgate-floating-timer .fg-rz-e { right: 0; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+/* The four corners, above the edges so they win the overlap. */
+#focusgate-floating-timer .fg-rz-nw { left: 0; top: 0; width: 12px; height: 12px; z-index: 7; cursor: nwse-resize; }
+#focusgate-floating-timer .fg-rz-ne { right: 0; top: 0; width: 12px; height: 12px; z-index: 7; cursor: nesw-resize; }
+#focusgate-floating-timer .fg-rz-sw { left: 0; bottom: 0; width: 12px; height: 12px; z-index: 7; cursor: nesw-resize; }
+#focusgate-floating-timer .fg-rz-se { right: 0; bottom: 0; width: 14px; height: 14px; z-index: 8; cursor: nwse-resize; }
+/* The window buttons sit above every resize zone. The top edge and the two top corners run straight
+   past them, and the handle's padding scales with the card — so at a small size a band that tried to
+   dodge them would have to know their width. Lifting the buttons instead is the answer that cannot
+   go stale. z-index needs something to act on, and `relative` leaves them exactly where the flex row
+   put them. */
+#focusgate-floating-timer .fg-x,
+#focusgate-floating-timer .fg-min,
+#focusgate-floating-timer .fg-rst,
+#focusgate-floating-timer .fg-pop { position: relative; z-index: 9; }
+/* Only the bottom-right corner has anything to look at — it is where a resize grip is expected, so
+   it is the one that has to be findable. The rest are invisible bands, exactly as a window's are:
+   visible lines down the sides of a small card would read as borders that meant something. */
+#focusgate-floating-timer .fg-rz-se svg { opacity: .5; transition: opacity .12s ease; }
+#focusgate-floating-timer:hover .fg-rz-se svg,
+#focusgate-floating-timer.fg-resizing .fg-rz-se svg,
+#focusgate-floating-timer .fg-rz-se:focus-visible svg { opacity: 1; }
+#focusgate-floating-timer .fg-rz-se:focus-visible { outline: 2px solid #f59e0b; outline-offset: -1px; }
+/* While a resize is actually running. The card is being dragged narrower under the pointer, so the
+   edge slides out from under it constantly — without this the corner would blink on and off for the
+   whole drag as :hover came and went. */
+#focusgate-floating-timer.fg-resizing { border-color: #f59e0b; }
+#focusgate-floating-timer.fg-minimized .fg-rz { display: none !important; }
+
+/* ---- Bottom corner prompt to complete next pending study site ---- */
+.fg-next-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  max-width: 380px;
+  min-width: 300px;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #f1f5f9;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 16px 18px;
+  transform: translateY(30px) scale(0.95);
+  opacity: 0;
+  pointer-events: auto;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+  user-select: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.fg-next-toast * {
+  box-sizing: border-box;
+}
+.fg-next-toast.fg-show {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+.fg-next-toast-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.fg-next-toast-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.fg-next-toast-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+.fg-next-toast-close:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
+}
+.fg-next-toast-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #4ade80;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.fg-next-toast-msg {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #cbd5e1;
+  margin-bottom: 14px;
+}
+.fg-next-toast-msg b {
+  color: #fde68a;
+  font-weight: 700;
+}
+.fg-next-toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fg-next-toast-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none !important;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+  transition: transform 0.15s, filter 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.fg-next-toast-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.55);
+}
+.fg-next-toast-btn:active {
+  transform: translateY(0);
+}
+.fg-next-toast-btn.sec {
+  background: #1e293b;
+  color: #cbd5e1 !important;
+  box-shadow: none;
+  border: 1px solid #334155;
+}
+.fg-next-toast-btn.sec:hover {
+  color: #ffffff !important;
+  border-color: #64748b;
+}
+/* What happened when you pressed Open, on the occasions it is not simply "a tab opened".
+   Under the buttons rather than replacing the message above them, because the message is still
+   true — that target is still the next thing to do — and this is a note about the attempt. Hidden
+   until there is something to say; see `say()` in renderNextTaskToast, which also holds the toast
+   open while it says it. */
+.fg-next-toast-note {
+  margin-top: 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #cbd5e1;
+  user-select: text;
+}
+.fg-next-toast-note[hidden] { display: none; }
+.fg-next-toast-note.warn { color: #fca5a5; }
+.fg-next-toast-timer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  width: 100%;
+  transform-origin: left;
+  animation: fg-timer-shrink linear forwards;
+}
+@keyframes fg-timer-shrink {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* ---- the cover over a video that isn't what you're studying -----------------
+   What replaced taking the whole tab away. The refused thing is one <video> element, so this covers that
+   element and nothing else: the search results, the sidebar, the playlist and your place in all three are
+   left exactly as they were.
+   Everything here is scoped to our own class. Nothing about the host page is restyled, and the cover is
+   appended INSIDE the player, so it cannot end up over anything else. */
+/* ---- while the check is running: a panel in the corner, not a cover ----------
+   The two states of this element are deliberately opposite in weight. Nothing has been refused yet while
+   the answer is still coming, so nothing should look refused: the player is simply held still, and this
+   says what is being read and how far along it is. A full-screen "checking…" over a video that is about to
+   be allowed reads as a block, which is exactly how it was being read.
+   The element still covers the player — it has to, or you could press play underneath it — but it is
+   transparent apart from the panel, and the moving aura around the edge is what says "working". */
+.fg-vshield.fg-vshield-checking {
+  display: block;
+  padding: 0;
+  background: rgba(6, 10, 20, .34);
+  animation: none;
+  /* hidden, not auto: the aura bands below deliberately extend past both edges so their sweep has
+     somewhere to come from, and inherited `overflow: auto` would turn that into scrollbars on the player. */
+  overflow: hidden;
+}
+/* The aura. Two bands sweeping in opposite directions around the inside edge, which reads as a scan rather
+   than as a spinner — and unlike a spinner it does not sit in the middle of the picture. Cheap: two
+   gradients and a transform, no layout, no repaint of anything underneath. */
+.fg-vshield.fg-vshield-checking::before,
+.fg-vshield.fg-vshield-checking::after {
+  content: "";
+  position: absolute;
+  left: -50%; right: -50%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #22d3ee 18%, #a78bfa 50%, #22d3ee 82%, transparent);
+  opacity: .85;
+  will-change: transform;
+}
+.fg-vshield.fg-vshield-checking::before { top: 0; animation: fg-wave 3.2s linear infinite; }
+.fg-vshield.fg-vshield-checking::after { bottom: 0; animation: fg-wave 3.2s linear infinite reverse; }
+@keyframes fg-wave {
+  from { transform: translateX(-30%); }
+  to   { transform: translateX(30%); }
+}
+.fg-vshield .fg-vp {
+  position: absolute;
+  top: 12px; left: 12px;
+  max-width: min(300px, calc(100% - 24px));
+  padding: 11px 13px 10px;
+  border-radius: 10px;
+  background: rgba(9, 14, 26, .93);
+  border: 1px solid rgba(34, 211, 238, .34);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .45);
+  text-align: left;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #e2e8f0;
+  animation: fg-vs-in .18s ease-out;
+}
+.fg-vshield .fg-vp-h { font-size: 12.5px; font-weight: 800; color: #f8fafc; }
+/* The ellipsis animates on its own, so the heading is alive even while a step is taking a while. */
+.fg-vshield .fg-vp-h i { font-style: normal; animation: fg-vs-dots 1.4s steps(4, end) infinite; }
+@keyframes fg-vs-dots { 0% { opacity: .25; } 50% { opacity: 1; } 100% { opacity: .25; } }
+.fg-vshield .fg-vp-bar {
+  margin: 7px 0 5px; height: 3px; border-radius: 999px;
+  background: rgba(148, 163, 184, .2); overflow: hidden;
+}
+/* Width comes from the real step number, not from a timer. A bar that fills on its own would make a stall
+   look like progress, which is the one thing a progress bar must not do. */
+.fg-vshield .fg-vp-bar span {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #22d3ee, #a78bfa);
+  transition: width .3s ease;
+}
+.fg-vshield .fg-vp-step { font-size: 10.5px; color: #94a3b8; margin-bottom: 6px; }
+.fg-vshield .fg-vp-row {
+  display: flex; align-items: baseline; gap: 7px;
+  font-size: 11px; line-height: 1.85; color: #cbd5e1;
+}
+.fg-vshield .fg-vp-row .fg-vp-mk { width: 10px; flex: none; color: #64748b; text-align: center; }
+.fg-vshield .fg-vp-row .fg-vp-nm { flex: 1 1 auto; min-width: 0; }
+.fg-vshield .fg-vp-row .fg-vp-st { flex: none; color: #64748b; font-size: 10.5px; }
+/* A row switched off is dimmed rather than hidden. "Description off" is information — it is the answer to
+   "why did it not notice that" — and it points at the switch that would change it. */
+.fg-vshield .fg-vp-row.off { opacity: .42; }
+.fg-vshield .fg-vp-row.done .fg-vp-mk { color: #4ade80; }
+.fg-vshield .fg-vp-row.done .fg-vp-st { color: #4ade80; }
+.fg-vshield .fg-vp-row.busy .fg-vp-mk { color: #22d3ee; animation: fg-vs-dots 1.1s ease-in-out infinite; }
+.fg-vshield .fg-vp-row.busy .fg-vp-st { color: #67e8f9; }
+.fg-vshield .fg-vp-topics { margin-top: 7px; font-size: 10.5px; color: #94a3b8; }
+
+/* ---- the verdict, once there is one ------------------------------------------
+   TWO classes on every state rule below, not one, and that is a fix rather than a style.
+   `.fg-vshield-allowed` and the base `.fg-vshield` are both a single class, so they have identical
+   specificity — and the base rule is written further down this file, so it WON. The base sets
+   `background: #0b1020` and `pointer-events: auto`, which is exactly the bug that was reported: an
+   allowed video sat behind a solid dark-navy sheet that also swallowed every click, so the video you
+   had just been cleared to watch could not be seen or started. `-checking` never had the problem
+   because it was already written as two classes; `-blocked` never had it because it happens to come
+   after the base. Written as `.fg-vshield.fg-vshield-*` the order of this file stops mattering.
+
+   Shown for a pass as much as for a refusal. A number that appears when something is blocked and is silent
+   when it is allowed teaches nothing about how the check behaves — and worse, silence on a pass is
+   indistinguishable from the check never having run, which are two situations needing opposite responses. */
+.fg-vshield.fg-vshield-allowed { background: transparent; }
+/* CLICK-THROUGH, and this is not cosmetic. The base rule captures pointer events on purpose — that is what
+   stops you pressing play under a cover — but an ALLOWED video is one you are meant to be watching, and an
+   invisible sheet over the whole player would swallow every click on it: play, pause, the seek bar, the
+   fullscreen button. So the sheet lets everything through, and only the badge takes events — it has a
+   tooltip, which needs a hover to land on it. */
+.fg-vshield.fg-vshield-allowed { pointer-events: none; }
+.fg-vshield.fg-vshield-allowed .fg-ok { pointer-events: auto; }
+/* The pass used to be a full panel here: .fg-vp-result with a pill, a heading, a reason block and a note.
+   All of it is gone with the panel — see .fg-ok below, which is the whole allowed state now. The .fg-vp-*
+   rules that remain are the ones the CHECKING panel still uses, plus .fg-vp-see / .fg-vp-sent, which the
+   refusal still shows. */
+/* "See exactly what was sent." Plain and quiet: it is for the moment somebody disagrees with a verdict, and
+   that moment should not be advertised at everybody else. */
+.fg-vshield .fg-vp-see {
+  display: block; margin-top: 8px; padding: 0;
+  background: none; border: 0; cursor: pointer;
+  font: inherit; font-size: 10.5px; color: #67e8f9; text-align: left;
+}
+.fg-vshield .fg-vp-see:hover { color: #a5f3fc; text-decoration: underline; }
+
+/* ---- allowed: the whole verdict, as one badge --------------------------------
+   Top left, where the "checking" panel was, so the answer appears where the question was being asked
+   instead of somewhere new. Absolutely positioned like that panel, which is what takes it out of the
+   base rule's centring flex — a badge in the middle of a video you are watching is worse than a panel,
+   not better.
+   Everything the old panel said is in its `title`. The badge itself is the only part with pointer
+   events, so the hover works while every click still reaches the player underneath. */
+.fg-vshield .fg-ok {
+  position: absolute;
+  top: 10px; left: 12px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px;
+  background: rgba(8, 15, 28, .82);
+  border: 1px solid rgba(74, 222, 128, .45);
+  color: #86efac;
+  font-size: 11.5px; font-weight: 800; line-height: 1.6;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  cursor: default;
+  animation: fg-vs-in .18s ease-out;
+}
+.fg-vshield .fg-ok b { font-size: 13px; font-variant-numeric: tabular-nums; }
+/* "match" is the label, not the news. */
+.fg-vshield .fg-ok .fg-ok-w { font-weight: 600; font-size: 10.5px; opacity: .72; }
+/* A player too small for a badge in the corner gets no badge. At that size it would cover a meaningful
+   share of the picture to report something that went right. */
+@media (max-height: 180px) { .fg-vshield .fg-ok { display: none; } }
+.fg-vshield .fg-vp-sent {
+  margin: 7px 0 0; padding: 8px; max-height: 220px; overflow: auto;
+  background: #05080f; border: 1px solid #1e293b; border-radius: 7px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9.5px; line-height: 1.5; color: #94a3b8;
+  white-space: pre-wrap; word-break: break-word;
+  /* Selectable, obviously — the point of showing it is that it can be read and copied. The cover captures
+     pointer events, so this has to opt back in. */
+  user-select: text;
+}
+/* A player too small for a list keeps the heading and the bar, which still say what is happening. */
+@media (max-height: 300px) {
+  .fg-vshield .fg-vp-row, .fg-vshield .fg-vp-topics { display: none; }
+}
+
+.fg-vshield {
+  position: absolute;
+  inset: 0;
+  /* Above everything the player puts inside itself, and the absurdity of the number is the point. YouTube's
+     control bar sits at z-index 60 with its top bar at 61, so a cover at 45 hid the picture and left the
+     seek bar, the volume slider and the fullscreen button poking out underneath — you could scrub and
+     listen to a video you could not see. Picked to sit at the top of the stacking context rather than one
+     more than somebody else's number, which changes between builds. */
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: #0b1020;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #e2e8f0;
+  /* Events are captured, not passed through. Without this you could press space and listen to a video
+     behind its own cover, or click the play button under it. */
+  pointer-events: auto;
+  cursor: default;
+  overflow: auto;
+  animation: fg-vs-in .18s ease-out;
+}
+@keyframes fg-vs-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---- refused: the panel in the middle ---------------------------------------
+   The three states of this element are drawn with deliberately different weight, and it follows
+   consequence rather than taste. "Checking" is a small card in a corner over a still player, because
+   nothing has been refused yet. "Allowed" is the same card reporting a score, gone in nine seconds,
+   because it is a receipt for something you are about to watch. This one is the extension taking
+   something away — so it says so in the middle of the picture, with the number it rests on, the line
+   that number missed, and which part of the video each figure came from.
+   The base .fg-vshield rule already centres its content and captures pointer events; this only adds
+   depth to the backdrop and styles what sits on it. */
+.fg-vshield.fg-vshield-blocked {
+  background: radial-gradient(circle at center, #111827 0%, #030712 100%);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, .8);
+}
+.fg-vshield .fg-bk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: min(430px, 100%);
+  padding: 26px 30px 22px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .022);
+  border: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, .5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  text-align: center;
+}
+/* Red, and the only red thing here. The heading below it is white on purpose: two shouts is none, and
+   the icon is the part that reads at a glance from across a room. */
+.fg-vshield .fg-bk-ban {
+  color: #ef4444;
+  fill: rgba(239, 68, 68, .1);
+  flex: none;
+  filter: drop-shadow(0 0 12px rgba(239, 68, 68, .35));
+}
+.fg-vshield .fg-bk-h {
+  font-size: 18px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+  color: #f8fafc; line-height: 1;
+}
+/* The score, which is the whole reason this panel is not just the word BLOCKED. "Blocked" on its own
+   leaves you guessing whether the check even looked; the figure it earned and the line it had to clear
+   is the answer, and it is something you can disagree with — which is the point. */
+.fg-vshield .fg-bk-score {
+  width: 100%;
+  margin-top: 2px;
+  padding: 11px 13px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .42);
+  border: 1px solid rgba(248, 113, 113, .3);
+  text-align: left;
+}
+.fg-vshield .fg-bk-score-h {
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 12px; color: #e2e8f0;
+}
+.fg-vshield .fg-bk-score-h b {
+  font-size: 21px; font-weight: 800; line-height: 1; color: #f87171;
+  font-variant-numeric: tabular-nums;
+}
+.fg-vshield .fg-bk-score-h em { margin-left: auto; font-style: normal; font-size: 10.5px; color: #94a3b8; }
+/* The gap between what it scored and what it needed, made visible. The tick is the threshold: a number
+   beside a number is arithmetic, and a bar with a line on it is a glance. */
+.fg-vshield .fg-bk-bar {
+  position: relative;
+  height: 5px;
+  margin: 9px 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .1);
+}
+.fg-vshield .fg-bk-bar i {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #f87171, #fb923c);
+  transition: width .3s ease;
+}
+/* Deliberately NOT clipped by the track: it stands a little proud of it at both ends, so the threshold
+   reads as a mark ON the scale rather than as a brighter patch of it. */
+.fg-vshield .fg-bk-bar u {
+  position: absolute; top: -3px;
+  width: 2px; height: 11px; margin-left: -1px;
+  background: rgba(255, 255, 255, .8);
+  border-radius: 1px;
+  text-decoration: none;
+}
+.fg-vshield .fg-bk-fields { font-size: 10.5px; line-height: 1.55; color: #94a3b8; }
+.fg-vshield .fg-bk-why {
+  margin-top: 5px; font-size: 11.5px; line-height: 1.45; color: #cbd5e1; font-style: italic;
+}
+.fg-vshield .fg-bk-topics { font-size: 11px; color: #94a3b8; line-height: 1.7; }
+/* One sentence about why this was set up, because a refusal that is only a refusal is an argument with
+   the extension, and this turns it back into one with yourself. Drawn once per video — see fgNudge — so
+   it does not reshuffle underneath you like a slot machine. */
+.fg-vshield .fg-bk-nudge {
+  max-width: 34em;
+  font-size: 12.5px; font-style: italic; line-height: 1.55;
+  color: rgba(255, 255, 255, .72);
+}
+/* What the gate has actually turned away. Green, and the only green thing here: it is the one line on a
+   refusal screen that is on your side. Every figure in it is counted rather than estimated — see
+   noteVideoSkip — and any part that isn't known is left out instead of defaulted. */
+.fg-vshield .fg-bk-saved {
+  display: flex; align-items: center; gap: 11px;
+  max-width: 100%;
+  padding: 9px 16px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, .12);
+  border: 1px solid rgba(16, 185, 129, .35);
+  color: #34d399;
+}
+.fg-vshield .fg-bk-saved svg { flex: none; color: #34d399; }
+.fg-vshield .fg-bk-saved-t { display: flex; flex-direction: column; gap: 1px; text-align: left; }
+.fg-vshield .fg-bk-saved-1 { font-size: 12.5px; font-weight: 700; color: #6ee7b7; }
+.fg-vshield .fg-bk-saved-1 span { font-weight: 500; color: rgba(255, 255, 255, .5); }
+.fg-vshield .fg-bk-saved-2 { font-size: 10.5px; font-weight: 500; color: #94a3b8; }
+.fg-vshield .fg-bk-acts { display: flex; align-items: center; justify-content: center; gap: 14px; }
+/* The eye: show me the picture. A PEEK and not a way past — the video stays paused and muted behind it,
+   and the cover still captures every click. A one-press bypass is not a feature of a gate. */
+.fg-vshield .fg-bk-eye {
+  width: 42px; height: 42px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .5);
+  border: 2px solid rgba(255, 255, 255, .85);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .5);
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+.fg-vshield .fg-bk-eye svg { display: block; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .85)); }
+.fg-vshield .fg-bk-eye:hover { background: rgba(0, 0, 0, .7); border-color: #fff; transform: scale(1.08); }
+.fg-vshield .fg-bk-eye:focus-visible { outline: 2px solid #facc15; outline-offset: 3px; }
+.fg-vshield .fg-bk-note { font-size: 10.5px; line-height: 1.6; color: #7c8ba4; max-width: 36em; }
+.fg-vshield .fg-bk-note b { color: #cbd5e1; }
+.fg-vshield .fg-bk .fg-vp-see { align-self: center; }
+
+/* ---- peeking ----
+   The cover thins out and the panel steps aside, so the frame underneath can be looked at. NOTHING else
+   changes: the video is still held paused and muted by setTopicHold, which is re-applied every tick, and
+   this element still captures pointer events so the play button under it cannot be reached.
+   The eye stays, pinned to a corner, because the same control has to put the cover back. */
+.fg-vshield-blocked.fg-vshield-peek {
+  background: rgba(3, 7, 18, .12);
+  box-shadow: none;
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+.fg-vshield-peek .fg-bk {
+  display: block;
+  padding: 0; gap: 0;
+  background: none; border: 0; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  max-width: none;
+}
+.fg-vshield-peek .fg-bk > *:not(.fg-bk-acts) { display: none; }
+.fg-vshield-peek .fg-bk-acts { position: absolute; top: 10px; left: 10px; }
+.fg-vshield-peek .fg-bk-eye { width: 34px; height: 34px; border-width: 1px; }
+.fg-vshield-peek .fg-bk-eye svg { width: 15px; height: 15px; }
+
+/* A player too small for all of it keeps the parts that carry the verdict: the icon, the heading and the
+   score. The nudge, the tally and the footnote are the first things to go — they are context, and context
+   is what you drop when there is no room for it. */
+@media (max-height: 400px) {
+  .fg-vshield .fg-bk { padding: 16px 18px 14px; gap: 7px; border-radius: 16px; }
+  .fg-vshield .fg-bk-ban { width: 42px; height: 42px; }
+  .fg-vshield .fg-bk-h { font-size: 15px; }
+  .fg-vshield .fg-bk-nudge, .fg-vshield .fg-bk-note, .fg-vshield .fg-bk-saved-2 { display: none; }
+}
+@media (max-height: 260px) {
+  .fg-vshield .fg-bk-ban, .fg-vshield .fg-bk-saved, .fg-vshield .fg-bk-topics { display: none; }
+  .fg-vshield .fg-bk-fields { display: none; }
+}
+
+/* ---- small players, measured rather than guessed ----------------------------
+   Everything above compacts the panel for a short WINDOW, through viewport media queries. A miniplayer is a
+   small box inside a full-size window, so none of those queries fire for it — which is why the whole panel
+   spilled out of the little player. These classes carry the same breakpoints applied to the PLAYER's own
+   measured height (set by shieldSizeClass in content.js), so the miniplayer, a small embed and a short
+   fullscreen window are all compacted by the box they are actually drawn in. The classes stack — a 225px
+   miniplayer carries h400, h300 and h260 at once — so each step only has to say what it additionally drops. */
+
+/* ≤400px tall: the receipt lines go, the verdict stays. */
+.fg-vshield.fg-vshield-h400 .fg-bk { padding: 14px 16px 12px; gap: 6px; border-radius: 14px; }
+.fg-vshield.fg-vshield-h400 .fg-bk-ban { width: 40px; height: 40px; }
+.fg-vshield.fg-vshield-h400 .fg-bk-h { font-size: 14px; }
+.fg-vshield.fg-vshield-h400 .fg-bk-nudge,
+.fg-vshield.fg-vshield-h400 .fg-bk-note,
+.fg-vshield.fg-vshield-h400 .fg-bk-saved-2 { display: none; }
+
+/* ≤300px tall: the cover itself tightens — the base 24px padding is most of a box this size — and the bulky
+   bottom row comes off (the peek eye, the saved tally, "see what was sent"). The checking panel sheds its
+   field rows and is pinned to the width of the little player. */
+.fg-vshield.fg-vshield-h300 { padding: 10px; gap: 6px; overflow: hidden; }
+.fg-vshield.fg-vshield-h300 .fg-vp { top: 8px; left: 8px; right: 8px; max-width: none; padding: 8px 10px; }
+.fg-vshield.fg-vshield-h300 .fg-vp-row,
+.fg-vshield.fg-vshield-h300 .fg-vp-topics { display: none; }
+.fg-vshield.fg-vshield-h300 .fg-bk-saved,
+.fg-vshield.fg-vshield-h300 .fg-bk-note,
+.fg-vshield.fg-vshield-h300 .fg-bk-acts,
+.fg-vshield.fg-vshield-h300 .fg-bk .fg-vp-see,
+.fg-vshield.fg-vshield-h300 .fg-vp-sent { display: none; }
+
+/* ≤260px tall — the ordinary miniplayer. Pared back to what reads at a glance in a box this size: the mark
+   and the word "Blocked" over the held picture. The score, the per-field figures, the reason and the topic
+   chips are all dropped — there is nowhere to put them that is not on top of the video they are covering,
+   and the one thing that has to land is "this is blocked". */
+.fg-vshield.fg-vshield-h260 { padding: 8px; gap: 3px; }
+.fg-vshield.fg-vshield-h260 .fg-bk { padding: 6px 12px; gap: 3px; border-radius: 10px; max-width: 96%; }
+.fg-vshield.fg-vshield-h260 .fg-bk-ban { display: block; width: 30px; height: 30px; }
+.fg-vshield.fg-vshield-h260 .fg-bk-h { font-size: 12.5px; letter-spacing: .6px; }
+.fg-vshield.fg-vshield-h260 .fg-bk-score,
+.fg-vshield.fg-vshield-h260 .fg-bk-topics { display: none; }
+.fg-vshield.fg-vshield-h260 .fg-vp-h { font-size: 11px; }
+.fg-vshield.fg-vshield-h260 .fg-vp-step { font-size: 9.5px; margin-bottom: 0; }
+
+/* ≤180px tall: barely a player. The mark shrinks, the step line goes, and the allowed badge is hidden the
+   same way the max-height:180 query hides it for a short window. */
+.fg-vshield.fg-vshield-h180 .fg-ok { display: none; }
+.fg-vshield.fg-vshield-h180 .fg-bk-ban { width: 26px; height: 26px; }
+.fg-vshield.fg-vshield-h180 .fg-bk-h { font-size: 11px; }
+.fg-vshield.fg-vshield-h180 .fg-vp-step { display: none; }
+
+/* ---- videos inside Google Search ---------------------------------------------
+   The cover over a YouTube player that Google opened inside its own page. The player is another origin, so
+   the cover cannot live inside it the way it does on YouTube; this box is laid over it from outside instead,
+   kept at the player's own position by content.js, and the ordinary .fg-vshield inside it fills the box
+   exactly as it fills a player — same panel, same size classes, same rules for what takes the clicks.
+   The box itself takes none, so nothing outside the player can ever be caught by it. */
+.fg-gcover {
+  position: fixed;
+  /* The highest there is. This sits at the root over a page's own overlays — Google's pop-up players among
+     them — rather than inside a player, so the number only has to beat the page, and the page can be high. */
+  z-index: 2147483647;
+  margin: 0; padding: 0; border: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* A held frame is a blank page, and a blank page can be white. While the check runs the cover is opaque
+   rather than see-through, so what sits behind the panel is a dark player, not an empty white box. */
+.fg-gcover.fg-gcover-parked > .fg-vshield.fg-vshield-checking { background: #0b1020; }
+/* No peek: behind a held frame there is no picture to look at — it has been stopped, not paused. */
+.fg-gcover .fg-bk-acts { display: none; }
+
+.fg-vshield .fg-vs-mark { font-size: 26px; line-height: 1; }
+.fg-vshield .fg-vs-h {
+  font-size: 17px; font-weight: 800; color: #f8fafc; max-width: 34em; line-height: 1.35;
+}
+.fg-vshield .fg-vs-p { font-size: 13px; max-width: 34em; line-height: 1.7; color: #cbd5e1; }
+.fg-vshield .fg-vs-note {
+  font-size: 12px; max-width: 36em; line-height: 1.65; color: #94a3b8;
+}
+.fg-vshield .fg-vs-note b { color: #cbd5e1; }
+/* The topics, as chips, because they are the thing to read and act on: they say what WOULD open.
+   `max-width: 100%` with an ellipsis is the overflow fix. The chip was `white-space: nowrap` with no width
+   limit inside a panel capped at 300px, so a topic of more than about six words simply ran out over the
+   video with no edge to it. A chip cannot shrink below its text unless it is allowed to cut it. */
+.fg-vshield .fg-vs-topic {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 3px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(249,115,22,.16);
+  border: 1px solid rgba(249,115,22,.4);
+  color: #fdba74;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+/* ---- the topic, folded away -------------------------------------------------
+   The control on one line, the chips on the next, so the chip's `max-width: 100%` is measured against the
+   panel rather than against whatever is left beside a label. */
+.fg-vshield .fg-tg-wrap { display: block; }
+/* A PILL, not a bare glyph. It was a 10px grey arrow with no background, which is invisible on a busy video
+   thumbnail and gives nothing away about being pressable — the whole affordance was a 6px triangle. Now it
+   is a bordered chip in the panel's own cyan, with the label inside it so the target is the width of a word
+   rather than of a character. */
+.fg-vshield .fg-tg {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: 0; padding: 2px 9px 2px 6px;
+  background: rgba(34, 211, 238, .12);
+  border: 1px solid rgba(34, 211, 238, .38);
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit; font-size: 10.5px; font-weight: 700; line-height: 1.5;
+  color: #a5f3fc;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+}
+.fg-vshield .fg-tg:hover {
+  background: rgba(34, 211, 238, .24);
+  border-color: rgba(34, 211, 238, .72);
+  color: #cffafe;
+}
+.fg-vshield .fg-tg:active { transform: scale(.96); }
+.fg-vshield .fg-tg:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }
+/* The caret rotates, not the whole pill — one glyph for both states, the same as the folds on the settings
+   page. Rotating the button would take the label round with it. */
+.fg-vshield .fg-tg-car { display: inline-block; font-size: 9px; line-height: 1; transition: transform .15s ease; }
+.fg-vshield .fg-tg[aria-expanded="true"] .fg-tg-car { transform: rotate(90deg); }
+/* Flex with a gap rather than margins on the chips, and that is the rest of the overflow fix. `max-width:
+   100%` caps the chip at the container's width, but a `margin: 0 3px` on top of that put its outer edge 3px
+   PAST it — which is exactly the sliver that was still hanging over the video. Spacing between chips is the
+   container's job now, so the cap means what it says. */
+.fg-vshield .fg-tg-body {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px;
+  margin-top: 4px;
+}
+/* min-width: 0 because a flex item's default `min-width: auto` is its min-content width, and min-width beats
+   max-width — so without this a single long word could still push past the cap. */
+.fg-vshield .fg-tg-body .fg-vs-topic { margin: 0; min-width: 0; }
+/* Collapsed, the cut-off text is a second way in, so it says so with the cursor. */
+.fg-vshield .fg-tg-wrap:not(.fg-tg-open) .fg-tg-body { cursor: pointer; }
+/* Open: the chip is allowed to wrap and to be as tall as it needs. Capped and scrollable all the same — a
+   topic pasted in from somewhere could be a paragraph, and the panel still has a video behind it. */
+.fg-vshield .fg-tg-open .fg-vs-topic {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.5;
+}
+.fg-vshield .fg-tg-open .fg-tg-body {
+  max-height: 96px; overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #475569 transparent;
+}
+/* A small player — a sidebar preview, a picture-in-picture window, a Short on a narrow screen — cannot
+   hold three paragraphs. The heading alone still says what happened. */
+@media (max-height: 260px) {
+  .fg-vshield { gap: 6px; padding: 12px; }
+  .fg-vshield .fg-vs-mark { font-size: 18px; }
+  .fg-vshield .fg-vs-h { font-size: 14px; }
+  .fg-vshield .fg-vs-p, .fg-vshield .fg-vs-note { display: none; }
+}

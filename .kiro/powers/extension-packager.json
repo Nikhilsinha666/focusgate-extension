@@ -1,0 +1,22 @@
+{
+  "name": "extension-packager",
+  "version": "1.0.0",
+  "description": "Kiro Power to validate, audit, and package Chrome extensions for production release.",
+  "tools": [
+    {
+      "name": "audit_manifest",
+      "description": "Inspects manifest.json for CSP issues, deprecated permissions, and required icon sizes.",
+      "parameters": {
+        "manifestPath": "./manifest.json"
+      }
+    },
+    {
+      "name": "package_zip",
+      "description": "Bundles extension source into a compliant zip artifact excluding development and test files.",
+      "parameters": {
+        "output": "./dist/focusgate-release.zip",
+        "exclude": [".git", ".kiro", "tests", "*.log"]
+      }
+    }
+  ]
+}

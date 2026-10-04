@@ -1,0 +1,176 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+#wrap { position: relative; width: 100%; height: 100%; }
+#v {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror like a selfie */
+  display: block;
+  background: #000;
+}
+/* The page embedding this frame draws its own state dot, so the old status band
+   here would just say the same thing twice. Kept in the DOM (the script writes to
+   it) but out of sight. */
+#status { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Marker layer: mirrored exactly like the video, so a dot drawn at the face's
+   position in the frame lands on the face you can see. Never eats clicks. */
+#ov {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+#ov[hidden] { display: none; }
+
+/* ---------------- camera options ----------------
+   One opener in the corner; the switches unfold to its RIGHT, along the top strip.
+   Downward they walked across your own face — the preview is ~100px tall, so three
+   discs and their gaps reached most of the way to your chin, over the part of the
+   frame the detector reads. Sideways they stay in the strip above your head. */
+.camtools {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  z-index: 3;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--fg-disc-gap, 1px);
+}
+.camtoglist { display: flex; flex-direction: row; align-items: center; gap: var(--fg-disc-gap, 1px); }
+/* Not display:none. A box that is not laid out has nothing to animate from or to.
+   visibility keeps it out of the tab order and away from the pointer just as well,
+   and it can be timed: flipped at once on the way open, held back on the way shut
+   until the discs have finished sliding home. */
+.camtoglist { visibility: visible; transition: visibility 0s; }
+.camtools:not(.open) .camtoglist {
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s linear .2s;
+}
+/* The discs carry the movement themselves, and staggered, so the row unfolds from
+   behind the opener rather than arriving all at once — which is also what makes it
+   obvious where they have gone when you close it again. */
+.camtoglist .camtog { transition: transform .18s cubic-bezier(.2,.8,.3,1), opacity .15s ease; }
+.camtools:not(.open) .camtoglist .camtog { transform: translateX(-12px) scale(.8); opacity: 0; }
+/* Written per position rather than generated, so a disc added to the row without a
+   line here arrives with no delay at all and steps out of line with the rest. */
+.camtools.open .camtoglist .camtog:nth-child(2) { transition-delay: .04s; }
+.camtools.open .camtoglist .camtog:nth-child(3) { transition-delay: .08s; }
+.camtools.open .camtoglist .camtog:nth-child(4) { transition-delay: .12s; }
+.camtools.open .camtoglist .camtog:nth-child(5) { transition-delay: .16s; }
+.camtools.open .camtoglist .camtog:nth-child(6) { transition-delay: .20s; }
+/* Anyone who has asked not to be moved still gets the switches, just without the
+   journey. */
+@media (prefers-reduced-motion: reduce) {
+  .camtoglist .camtog { transition: none; }
+  .camtools:not(.open) .camtoglist .camtog { transform: none; }
+}
+
+/* Small discs over the picture. Faint until you point at the camera, so they don't
+   clutter a tiny preview.
+   The size is a variable rather than a number, because the preview's width is a setting now and
+   this row has to fit inside it or the last disc is cut off by the edge of the picture. There are
+   seven of them, so seven discs plus six gaps plus the 4px inset has to come to less than the
+   preview is wide — and that sum is done in facecam.js, which is the only place that knows how wide
+   the preview actually is (its own window). 17px is the answer for the 134px default, and stays
+   here as the fallback for the moment before that runs.
+   Anything ADDED to this row changes the divisor in that sum, so it has to be changed there too. */
+.camtog {
+  position: relative;
+  width: var(--fg-disc, 17px);
+  height: var(--fg-disc, 17px);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #fde68a;
+  background: rgba(2, 6, 23, .82);
+  border: 1px solid rgba(253, 230, 138, .55);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .55);
+  opacity: .85;
+  transition: opacity .12s ease, transform .12s ease;
+}
+/* A percentage of the disc, raised as the disc shrinks so the glyph lands on roughly the same
+   number of real pixels rather than disappearing with it. Set from facecam.js alongside the disc
+   size itself, since the two answers come from the same measurement. */
+.camtog svg {
+  width: var(--fg-disc-glyph, 72%);
+  height: var(--fg-disc-glyph, 72%);
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.camtog .slash { display: none; }
+#wrap:hover .camtog, .camtog:focus-visible { opacity: 1; }
+.camtog:active { transform: scale(.92); }
+/* Off: greyed out with a line through the icon, so the state is obvious. */
+.camtog[aria-pressed="false"] { color: #94a3b8; border-color: rgba(148, 163, 184, .4); }
+.camtog[aria-pressed="false"] .slash { display: block; }
+.camtog[aria-pressed="false"] .wave { display: none; }
+.camtog:focus-visible { outline: 2px solid #f59e0b; outline-offset: 2px; }
+/* Hover is the only affordance a 24px disc has room for, and only the two switches
+   and the gear need one — the opener already changes colour when it opens. */
+.camtoglist .camtog:hover { transform: scale(1.06); }
+
+/* The opener is not a switch, so it must not wear the switch's amber "on" colour
+   while shut — that would read as a third thing being turned on. Neutral closed,
+   amber open. */
+.camtoggle { color: #e2e8f0; border-color: rgba(226, 232, 240, .42); }
+.camtools.open .camtoggle { color: #fde68a; border-color: rgba(253, 230, 138, .55); }
+/* The gear leaves the page rather than changing something on it, so it is cool
+   slate like the opener instead of amber like the switches. */
+.camgear { color: #e2e8f0; border-color: rgba(226, 232, 240, .42); }
+.camgear:hover { color: #fff; border-color: rgba(255, 255, 255, .6); }
+
+/* ---------------- the timer speed ----------------
+   The multiplier the clock is currently being credited at, when the camera is the thing
+   deciding it. Opposite corner from the switches, and never in the middle: the centre of a
+   134px preview is where your face has to be for the box test to pass at all.
+
+   Sized from the preview, like the discs opposite it and from the same measurement in facecam.js:
+   10px is right for the 134px default and reads as a mistake on a preview twice that wide. The
+   fallback is that default, for the moment before the script runs. */
+.pacetag {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  z-index: 3;
+  font-weight: 800;
+  font-size: var(--fg-tag, 10px);
+  line-height: 1.45;
+  letter-spacing: .2px;
+  color: #e2e8f0;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: rgba(2, 6, 23, .82);
+  border: 1px solid rgba(226, 232, 240, .3);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .55);
+  /* It sits over the video and reports on it; it is not something to press. */
+  pointer-events: none;
+  /* Numbers of the same width, so the badge stops twitching as the multiplier ramps. Without
+     it every tenth that happens to be a 1 makes the box a pixel narrower, and the thing jitters
+     for the whole second it takes to settle. */
+  font-variant-numeric: tabular-nums;
+}
+.pacetag[hidden] { display: none; }
+/* Faster than real time, and slower. Lighter than the #22c55e / #f59e0b the markers are drawn
+   in, deliberately: those are thin strokes over a dark picture, these are backgrounds behind
+   dark text, and a colour that reads well as one is too heavy as the other. */
+.pacetag.up { color: #0b1020; background: #4ade80; border-color: rgba(74, 222, 128, .5); }
+.pacetag.down { color: #0b1020; background: #fbbf24; border-color: rgba(251, 191, 36, .5); }

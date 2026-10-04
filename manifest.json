@@ -1,0 +1,77 @@
+{
+  "manifest_version": 3,
+  "name": "FocusGate - Earn Your Distraction",
+  "version": "1.3.8",
+  "description": "Blocks distracting sites until you earn them by spending real time on the study sites you choose. Resets every day.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "webNavigation",
+    "favicon",
+    "contextMenus",
+    "scripting",
+    "downloads"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "FocusGate"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>",
+        "file:///*"
+      ],
+      "js": [
+        "vblock.js",
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": [
+        "yt_page_bridge.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "blocked.html",
+        "facecam.html",
+        "content.css"
+      ],
+      "matches": [
+        "<all_urls>",
+        "file:///*"
+      ]
+    }
+  ]
+}

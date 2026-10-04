@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "chrome-devtools-inspector": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "env": {
+        "PUPPETEER_HEADLESS": "true"
+      },
+      "description": "Enables Kiro to inspect live extension popup states, content script DOM injections, and runtime logs."
+    },
+    "extension-filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "description": "Provides local file inspection for extension assets, options configurations, and manifest dependencies."
+    }
+  }
+}

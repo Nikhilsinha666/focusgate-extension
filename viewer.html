@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>FocusGate</title>
+<!-- The countdown card's own stylesheet. On a website Chrome injects this alongside content.js;
+     here content.js is an ordinary script tag, so the sheet has to be asked for by name. Loaded in
+     the head, before the card exists, so it is never painted unstyled — content.js has a fallback
+     that inserts this same file into the card when it finds itself unstyled, and this is what
+     stops that fallback being needed. Every rule in it is under #focusgate-floating-timer or an
+     .fg-/#focusgate- name, so nothing here reaches the page below. -->
+<link rel="stylesheet" href="content.css" />
+<style>
+  /* Scoped, not a `*` reset. The countdown card is built inside this document by content.js and a
+     global reset would strip the padding and box sizing its own stylesheet relies on. */
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #0b1020; color: #e2e8f0; }
+  #stage, #stage * { box-sizing: border-box; }
+
+  /* The file gets the whole tab. No bar, no chrome of our own: the time, the camera and the pause
+     button all live in the draggable card content.js puts on top, exactly as they do on a website,
+     so a second copy of that information along the top edge was just stealing reading space. */
+  #stage { width: 100%; height: 100%; position: relative; background: #0b1020; }
+  #stage > iframe { width: 100%; height: 100%; border: 0; display: block; background: #1f2430; }
+  #stage > img { max-width: 100%; max-height: 100%; display: block; object-fit: contain; }
+  #stage > video, #stage > audio { display: block; max-width: 100%; max-height: 100%; }
+  #stage.center { display: grid; place-items: center; overflow: auto; padding: 16px; }
+  #stage > pre { width: 100%; height: 100%; overflow: auto; padding: 20px 24px; margin: 0;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; line-height: 1.7;
+    color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
+
+  .note { max-width: 460px; text-align: center; line-height: 1.7; font-size: 14px; color: #cbd5e1; }
+  .note h2 { font-size: 17px; color: #fde68a; margin: 0 0 10px; }
+  .note .fn { color: #f1f5f9; font-weight: 700; word-break: break-all; }
+  .note .btn { display: inline-block; margin-top: 14px; font: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer; background: linear-gradient(135deg, #f97316, #eab308); color: #1f2937;
+    border: 0; border-radius: 9px; padding: 9px 16px; text-decoration: none; }
+  .note .btn:hover { filter: brightness(1.08); }
+  .note .btn:focus-visible { outline: 2px solid #fde68a; outline-offset: 2px; }
+</style>
+</head>
+<body>
+  <div class="center" id="stage"></div>
+  <!-- An extension page cannot run an inline script, so all three are files. -->
+  <script src="filestore.js"></script>
+  <script src="viewer.js"></script>
+  <!-- Last, and the reason this page can run a camera at all.
+       content.js is FocusGate's on-page half: the countdown card, the face-detection frame, the
+       stillness check, the break button, the per-second report to the background. It normally
+       arrives as a content script, which Chrome will not inject into an extension page — so it is
+       loaded here by hand instead. Nothing in it is content-script-only.
+       This is what fixed "the camera never opens on a PDF": a local file opened from the disk is
+       drawn by Chrome's own viewer, where no script of ours can run, so the background had to
+       refuse camera-gated time outright. Served from here it is our page, and every check works. -->
+  <script src="content.js"></script>
+</body>
+</html>

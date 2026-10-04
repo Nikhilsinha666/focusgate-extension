@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>FocusGate Settings</title>
+<link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <!-- What "strict mode is on right now" means, in one place. Loaded before the page that
+       asks, and by the popup too, so the two cannot answer differently. -->
+  <script src="strict.js"></script>
+  <!-- Which keys are settings, and how to check one coming back in from a file. -->
+  <script src="settings.js"></script>
+  <!-- "Is this page about the topic you set?" — the depths, the caps, the prompt and the request.
+       Loaded here as well as by the worker so this page describes exactly what gets sent, rather
+       than its own account of it. -->
+  <script src="aicheck.js"></script>
+  <!-- Keeps a copy of a file you pick, so it has something to open. Chrome never says where a
+       picked file lives, so without this a file target is a name with no address. -->
+  <script src="filestore.js"></script>
+  <script src="tip.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

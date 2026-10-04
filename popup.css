@@ -1,0 +1,326 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 300px;
+  /* Hold the shape for the instant before the first paint, so the popup can never
+     appear as an empty sliver while it reads today's numbers. */
+  min-height: 190px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #0a0f1d;
+  color: #e8edf5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------- top bar: state + power ---------------- */
+.bar { display: flex; align-items: center; gap: 8px; padding: 13px 14px 11px; }
+.state { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+.state .dot { width: 8px; height: 8px; border-radius: 999px; background: #f59e0b; flex: none;
+  box-shadow: 0 0 0 3px rgba(245,158,11,.16); }
+.state .txt { font-size: 13px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; }
+.state .sub { font-size: 10px; color: #64748b; margin-top: 1px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.state .col { min-width: 0; }
+body.done .state .dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.16); }
+body.done .state .txt { color: #4ade80; }
+body.off .state .dot { background: #475569; box-shadow: none; }
+body.off .state .txt { color: #94a3b8; }
+
+/* power switch */
+.pw { position: relative; flex: none; width: 40px; height: 22px; cursor: pointer; }
+.pw input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.pw .track { position: absolute; inset: 0; border-radius: 999px; background: #1e293b;
+  transition: background .18s ease; }
+.pw .knob { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 999px;
+  background: #64748b; transition: transform .18s ease, background .18s ease;
+  display: grid; place-items: center; font-size: 9px; color: #0a0f1d; }
+.pw input:checked ~ .track { background: rgba(34,197,94,.28); }
+.pw input:checked ~ .knob { transform: translateX(18px); background: #22c55e; }
+.pw input:disabled ~ .track { opacity: .45; }
+.pw input:disabled { cursor: not-allowed; }
+
+/* ---------------- headline summary card ---------------- */
+.hero { padding: 8px 12px 10px; background: rgba(16, 24, 40, 0.7); border-radius: 11px; margin: 0 14px 10px; border: 1px solid #1e293b; }
+.hero-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.hero-rem-label { font-size: 9px; font-weight: 700; color: #94a3b8; letter-spacing: 0.6px; text-transform: uppercase; }
+.hero-rem-val { font-size: 20px; font-weight: 800; color: #f8fafc; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; }
+body.done .hero-rem-val { color: #4ade80; }
+.hero .n { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; font-variant-numeric: tabular-nums; color: #38bdf8; }
+body.done .hero .n { color: #4ade80; }
+.hero-track { height: 5px; margin: 8px 0 8px; }
+.hero-grid { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+.hero-col { display: flex; flex-direction: column; gap: 1px; }
+.hero-col .lbl { font-size: 9.5px; color: #64748b; }
+.hero-col b { color: #cbd5e1; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 11.5px; }
+.hero .of { font-size: 11px; color: #64748b; margin-top: 5px; }
+.hero .live { font-size: 10.5px; margin-top: 8px; color: #64748b; padding-top: 5px; border-top: 1px dashed rgba(255,255,255,0.08); }
+.hero .live.on { color: #4ade80; }
+.hero .live.warn { color: #fca5a5; }
+/* How much of today the clock spent not counting. Under the live line and quieter than it: that one
+   is about this second and worth reacting to, this is a running total worth glancing at. No dashed
+   rule of its own — it belongs to the line above rather than being a third section. */
+.hero .pauseline { font-size: 10px; margin-top: 4px; color: #64748b;
+  font-variant-numeric: tabular-nums; display: flex; align-items: center; }
+.hero .pauseline[hidden] { display: none; }
+
+/* ---------------- rows ---------------- */
+.list { padding: 0 14px 4px; }
+.item { padding: 9px 0; border-top: 1px solid #141c30; }
+.item .top { display: flex; align-items: baseline; gap: 8px; }
+.item .nm { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: #dbe4f0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .rt { font-size: 11px; color: #94a3b8; font-variant-numeric: tabular-nums; flex: none; }
+.item .rt.done { color: #4ade80; }
+.item .note { font-size: 10px; color: #64748b; margin-top: 3px; }
+.item .note.warn { color: #fcd34d; }
+/* ---- sequence mode ----
+   Which step a row is, in the smallest badge that can carry two digits and a glyph. It sits between
+   the name and the time because that is where the eye already travels, and `flex: none` keeps it from
+   stealing the width the name needs to ellipsise in.
+   The locked row is dimmed rather than reddened: nothing has gone wrong and nothing has been lost, it
+   simply is not this row's turn. The bar and the time are left at full strength, because what the row
+   will ask for when its turn comes has not changed. */
+.item .seqtag { flex: none; font-size: 9px; font-weight: 800; letter-spacing: .3px;
+  padding: 1px 5px; border-radius: 999px; font-variant-numeric: tabular-nums;
+  color: #cbd5e1; background: rgba(100,116,139,.22); border: 1px solid rgba(148,163,184,.35); }
+.item .seqtag.mine { color: #bae6fd; background: rgba(56,189,248,.18); border-color: rgba(56,189,248,.45); }
+.item.seqlock .nm { color: #8595ab; }
+
+.bar-track { height: 3px; background: #141c30; border-radius: 999px; overflow: hidden; margin-top: 6px; }
+/* The fill's colour is set per bar in popup.js — red at the start, through orange
+   and yellow, to green when it's full. */
+.bar-track > i { display: block; height: 100%; background: hsl(0 92% 52%); border-radius: 999px;
+  transition: width .35s ease, background .35s ease; }
+
+/* ---------------- footer ---------------- */
+.stats { display: flex; gap: 14px; padding: 10px 14px; border-top: 1px solid #141c30;
+  font-size: 11px; color: #94a3b8; }
+.stats b { color: #e8edf5; font-weight: 700; }
+.foot { display: flex; gap: 8px; padding: 0 14px 14px; }
+.btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: #16233c; color: #dbe4f0; font-weight: 600; font-size: 12px; padding: 9px 10px;
+  border: 1px solid #1e293b; border-radius: 9px; cursor: pointer; text-decoration: none;
+  transition: background .15s ease, border-color .15s ease; }
+.btn:hover { background: #1c2b48; border-color: #2b3b57; }
+.btn.primary { background: #f59e0b; border-color: #f59e0b; color: #1a1205; }
+.btn.primary:hover { background: #fbbf24; border-color: #fbbf24; }
+/* The confirming button on a question whose answer takes protection away — switching FocusGate off
+   is the only one so far. Red rather than the amber primary, because amber is the colour of every
+   ordinary "yes" in here and this one should not look like those. */
+.btn.danger { background: #b91c1c; border-color: #b91c1c; color: #fff1f1; }
+.btn.danger:hover { background: #dc2626; border-color: #dc2626; }
+.btn.icon { flex: none; width: 38px; }
+/* On a break: the play button is the way back, so it says so. */
+.btn.icon.onbreak { background: rgba(96,165,250,.22); border-color: rgba(96,165,250,.55); color: #bfdbfe; }
+.btn.icon.onbreak:hover { background: rgba(96,165,250,.32); }
+
+.empty { font-size: 11px; color: #64748b; padding: 4px 0 10px; }
+
+/* ---------------- password screen ---------------- */
+.lock { padding: 26px 20px 22px; text-align: center; }
+.lock .glyph { font-size: 26px; }
+.lock h2 { font-size: 14px; font-weight: 700; margin: 8px 0 14px; color: #e8edf5; }
+.lock input { width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid #1e293b;
+  background: #0f172a; color: #f1f5f9; font-size: 13px; margin-bottom: 8px; }
+.lock input:focus { outline: none; border-color: #f59e0b; }
+.lock .err { color: #fca5a5; font-size: 11px; min-height: 15px; margin-bottom: 6px; }
+
+/* ---------------- one info bubble, kept subtle ---------------- */
+.tip { position: relative; display: inline-flex; vertical-align: middle; margin-left: 4px; }
+.tip > .tip-i { width: 14px; height: 14px; border-radius: 50%; background: #16233c; color: #64748b;
+  border: 1px solid #1e293b; font-size: 9px; font-weight: 800; line-height: 13px; text-align: center;
+  cursor: help; user-select: none; display: block; }
+.tip > .tip-i:hover { background: #f59e0b; color: #1a1205; border-color: #f59e0b; }
+/* Fixed + placed by tip.js, so no ancestor's overflow can clip it. */
+.tip > .tip-box { position: fixed; left: 0; top: 0; z-index: 9999; width: 220px;
+  background: #111c33; color: #cbd5e1; border: 1px solid #2b3b57; border-radius: 10px;
+  padding: 9px 11px; font-size: 11px; font-weight: 400; line-height: 1.6; text-align: left;
+  box-shadow: 0 14px 30px rgba(0,0,0,.65); opacity: 0; visibility: hidden;
+  transition: opacity .15s, visibility .15s; }
+.tip:hover > .tip-box, .tip:focus-within > .tip-box, .tip.open > .tip-box { opacity: 1; visibility: visible; }
+.tip .tip-box b { color: #fde68a; }
+
+/* ---------------- names are links ---------------- */
+/* Clicking a target goes there, in a new tab. */
+.item .nm.link {
+  font: inherit; background: none; border: 0; padding: 0;
+  text-align: left; cursor: pointer; text-decoration: none; border-radius: 4px;
+  /* Reads as a link at a glance: link colour, dotted underline, and the ↗ that
+     says "this takes you somewhere". */
+  color: #7dd3fc;
+  border-bottom: 1px dashed rgba(125,211,252,.45);
+  display: inline-flex; align-items: baseline; gap: 4px;
+  transition: color .15s, border-color .15s;
+}
+.item .nm.link .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .nm.link .ext { flex: none; font-size: 9px; opacity: .7; transition: transform .15s, opacity .15s; }
+.item .nm.link:hover, .item .nm.link:focus-visible { color: #bae6fd; border-bottom-color: #bae6fd; }
+.item .nm.link:hover .ext { opacity: 1; transform: translate(1px, -1px); }
+.item .nm.link:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
+
+/* ---------------- password, asked only at the two real doors ---------------- */
+.pwask {
+  position: fixed; inset: 0; z-index: 9998; display: grid; place-items: center;
+  background: rgba(3, 7, 18, .78);
+}
+.pwask .pwcard {
+  width: 262px; padding: 18px 16px 14px; text-align: center;
+  background: #0b1020; border: 1px solid #1e293b; border-radius: 14px;
+  box-shadow: 0 20px 44px rgba(0,0,0,.7);
+}
+.pwask .glyph { font-size: 22px; }
+.pwask h2 { font-size: 13px; font-weight: 800; margin: 6px 0 4px; }
+.pwask p { font-size: 11px; color: #94a3b8; line-height: 1.5; margin-bottom: 10px; }
+.pwask input {
+  width: 100%; padding: 9px 11px; border-radius: 9px; border: 1px solid #1e293b;
+  background: #0f172a; color: #f1f5f9; font-size: 13px;
+}
+.pwask input:focus { outline: none; border-color: #f59e0b; }
+.pwask .err { color: #fca5a5; font-size: 11px; min-height: 15px; margin: 4px 0 2px; }
+.pwask .pwrow { display: flex; gap: 8px; }
+
+/* ---------------- the finish line ---------------- */
+.fgwin {
+  position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center;
+  background: rgba(3, 7, 18, .8); opacity: 0; transition: opacity .25s ease;
+}
+.fgwin.show { opacity: 1; }
+.fgwincard {
+  width: 264px; padding: 20px 16px 16px; text-align: center; border-radius: 16px;
+  border: 1px solid rgba(74,222,128,.45);
+  background: radial-gradient(120% 120% at 50% 0%, #14532d 0%, #0b1020 62%);
+  box-shadow: 0 22px 50px rgba(0,0,0,.72);
+  transform: scale(.9); transition: transform .3s cubic-bezier(.2,1.4,.4,1);
+}
+.fgwin.show .fgwincard { transform: scale(1); }
+.fgwincard .fgtrophy { font-size: 40px; line-height: 1; }
+.fgwincard h2 { font-size: 14px; font-weight: 800; color: #bbf7d0; margin: 8px 0 5px; }
+.fgwincard p { font-size: 11px; color: #cbd5e1; line-height: 1.55; }
+.fgwincard .fgxp {
+  display: inline-block; margin-top: 9px; padding: 4px 10px; border-radius: 999px;
+  background: rgba(250,204,21,.14); color: #fde047; font-weight: 800; font-size: 11px;
+}
+.fgwincard .btn { margin-top: 12px; }
+
+.fgparty { position: fixed; inset: 0; z-index: 10000; pointer-events: none; overflow: hidden; }
+.fgparty > i {
+  position: absolute; top: -12px; width: 7px; height: 11px; border-radius: 2px;
+  animation-name: fgfall; animation-timing-function: linear; animation-fill-mode: both;
+}
+@keyframes fgfall {
+  from { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  to { transform: translateY(110vh) rotate(var(--rot, 360deg)); opacity: .85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fgparty { display: none; }
+  .fgwin, .fgwincard { transition: none; }
+}
+
+/* ---------------- file url permission red alert banner ---------------- */
+.file-alert {
+  margin: 0 14px 10px;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.95), rgba(127, 29, 29, 0.98));
+  border: 1px solid #ef4444;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  animation: fileAlertPulse 2s infinite ease-in-out;
+}
+@keyframes fileAlertPulse {
+  0%, 100% { border-color: #ef4444; }
+  50% { border-color: #fca5a5; box-shadow: 0 4px 18px rgba(239, 68, 68, 0.5); }
+}
+.file-alert-ic { font-size: 16px; flex: none; line-height: 1; }
+.file-alert-txt { flex: 1; min-width: 0; font-size: 10.5px; line-height: 1.35; color: #fee2e2; }
+.file-alert-txt b { color: #fff; font-weight: 700; display: block; font-size: 11px; margin-bottom: 1px; }
+.file-alert-btn {
+  flex: none;
+  background: #f87171;
+  color: #450a0a;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.file-alert-btn:hover { background: #ffffff; transform: scale(1.04); }
+.file-alert-btn:active { transform: scale(0.96); }
+
+/* Logic connectors between items */
+.popup-logic-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+  position: relative;
+}
+.popup-logic-row::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: rgba(51, 65, 85, 0.45);
+}
+.popup-logic-tag {
+  position: relative;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #090e1a;
+  border: 1px solid #1e293b;
+  text-transform: uppercase;
+}
+.popup-logic-tag.and {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+.popup-logic-tag.or {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+
+/* ---------------- a line the popup says and then forgets ----------------
+   The popup had no way to tell you anything that wasn't a whole dialog. That is the right shape
+   for a question, and the wrong one for a reminder: "your phone has to be online for this" is not
+   something to answer, and putting an OK button under it teaches people to dismiss the next
+   dialog without reading it too.
+
+   Fixed to the bottom of the popup rather than flowing in the list, because it must not move the
+   controls under the cursor that just pressed something. Never eats clicks, for the same reason. */
+.pop-toast {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 9998;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #111c33;
+  border: 1px solid #2b3b57;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .6);
+  color: #cbd5e1;
+  font-size: 10.5px;
+  line-height: 1.45;
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.pop-toast.show { opacity: 1; transform: translateY(0); }
+.pop-toast b { color: #fde68a; font-weight: 700; }
+/* The phone reminder is information, not a fault, so it is amber-edged rather than red. */
+.pop-toast.phone { border-color: rgba(251, 191, 36, .45); }
+@media (prefers-reduced-motion: reduce) {
+  .pop-toast { transition: opacity .18s ease; transform: none; }
+  .pop-toast.show { transform: none; }
+}

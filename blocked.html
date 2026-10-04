@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Blocked by FocusGate</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: radial-gradient(circle at 30% 20%, #1f2937, #0b1020 60%); color: #e2e8f0; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 60px 24px; min-height: 100%; display: flex; flex-direction: column; justify-content: center; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: rgba(249,115,22,.15); color: #fdba74; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 18px; }
+  h1 { font-size: 38px; font-weight: 800; line-height: 1.1; margin-bottom: 10px; color: #fde68a; letter-spacing: -.5px; word-break: break-word; }
+  /* The headline is the site's own logo next to its name — the name is said once,
+     here, and nowhere else on the page. */
+  .hrow { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .hrow h1 { margin-bottom: 0; min-width: 0; }
+  /* "is blocked" sits beside the name, smaller and quieter — the name is what you
+     read, the state is what you already suspected. */
+  .hrow h1 .hword { color: #94a3b8; font-weight: 700; font-size: .5em; letter-spacing: 0; white-space: nowrap; }
+  .hfav { width: 38px; height: 38px; flex: none; border-radius: 10px; background: #111c33; border: 1px solid #1e293b; display: grid; place-items: center; overflow: hidden; }
+  .hfav img { display: block; width: 24px; height: 24px; border-radius: 5px; }
+  .hfav .favfb { font-size: 18px; line-height: 1; }
+  /* The instruction, in the size you actually read. The site it opens is picked out
+     so the sentence answers "what do I get for this?" at a glance. */
+  .lead { font-size: 16px; line-height: 1.55; color: #e2e8f0; margin-bottom: 8px; max-width: 60ch; }
+  .lead b { color: #fde68a; font-weight: 700; }
+  .lead .goal { color: #7dd3fc; font-weight: 700; }
+  .from { font-size: 12px; color: #64748b; margin-bottom: 26px; word-break: break-all; }
+  /* With no exact page to show, that line is gone — so the gap it was holding
+     open is handed to the card below it. */
+  .from[hidden] + .card { margin-top: 18px; }
+  .card { background: rgba(15,23,42,.7); border: 1px solid #1e293b; border-radius: 16px; padding: 22px; margin-bottom: 14px; backdrop-filter: blur(8px); }
+  h2 { font-size: 13px; color: #fbbf24; margin-bottom: 12px; letter-spacing: .5px; text-transform: uppercase; }
+  .target { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; margin: 0 -12px; border-bottom: 1px dashed #1e293b; border-radius: 12px; transition: background .2s, box-shadow .2s; }
+  .target:last-child { border-bottom: none; }
+  /* Each row wears the site's own logo, so you recognise it before you read it. */
+  .tfav { width: 30px; height: 30px; flex: none; align-self: start; margin-top: 2px; border-radius: 8px; background: #111c33; border: 1px solid #1e293b; display: grid; place-items: center; overflow: hidden; }
+  .tfav img { display: block; width: 18px; height: 18px; border-radius: 4px; }
+  .tfav .favfb { font-size: 14px; line-height: 1; }
+  .target.done .tfav { border-color: rgba(74,222,128,.35); }
+  .target.live .tfav { border-color: rgba(96,165,250,.45); }
+  .target .tbody { min-width: 0; }
+  .target .name { font-size: 14px; font-weight: 600; color: #f1f5f9; word-break: break-all; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .target .meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  /* The name is a link: coloured, underlined, with an arrow — so it's obvious you
+     can click it to go there. */
+  .target a.tlink { color: #7dd3fc; font-weight: 700; text-decoration: none; border-bottom: 1px dashed rgba(125,211,252,.45);
+    display: inline-flex; align-items: baseline; gap: 5px; padding: 0; background: none; border-radius: 0;
+    transition: color .15s, border-color .15s; }
+  .target a.tlink:hover, .target a.tlink:focus-visible { color: #bae6fd; border-bottom-color: #bae6fd; }
+  .target a.tlink .ext { font-size: 11px; opacity: .7; transition: transform .15s, opacity .15s; }
+  .target a.tlink:hover .ext { opacity: 1; transform: translate(1px, -1px); }
+  .target a.tlink:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
+  /* Finished goes green, the same as a finished row in Settings. */
+  .target.done a.tlink { color: #86efac; border-bottom-color: rgba(134,239,172,.45); }
+  .target.done a.tlink:hover, .target.done a.tlink:focus-visible { color: #bbf7d0; border-bottom-color: #bbf7d0; }
+  /* The button on the right stays a button.
+     Two elements share this: an <a> when there is an address to go to, and a <button> when there
+     isn't — a file picked from Chrome's dialog knows its name but not its drive, so its Open
+     goes to the tab it's already in, or to your files. A button rather than a link with a fake href,
+     because it does not navigate anywhere and the keyboard should treat it accordingly. The reset
+     lines are for the button only: a <button> brings its own border, font and background. */
+  .target a.go, .target button.go { background: linear-gradient(135deg, #f97316, #eab308); color: #1f2937; font-weight: 700; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; white-space: nowrap; }
+  .target button.go { border: 0; font-family: inherit; cursor: pointer; line-height: 1.2; }
+  .target button.go:hover { filter: brightness(1.08); }
+  .target button.go:focus-visible { outline: 2px solid #fde68a; outline-offset: 2px; }
+  /* The one you're working on this second. */
+  .target.live { background: rgba(59,130,246,.10); box-shadow: inset 0 0 0 1px rgba(96,165,250,.45); }
+  .target.live .name { color: #dbeafe; }
+  .nowtag { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase;
+    color: #bfdbfe; background: rgba(59,130,246,.22); border: 1px solid rgba(96,165,250,.45);
+    padding: 2px 7px; border-radius: 999px; }
+  .target.done { background: rgba(22,163,74,.07); box-shadow: inset 0 0 0 1px rgba(74,222,128,.3); }
+  .target.done a.go, .target.done button.go { background: linear-gradient(135deg, #16a34a, #4ade80); }
+  /* A goal that missed its window. Every rule here exists to beat the .done rules above, which is why
+     it sits after them rather than anywhere tidier: a goal finished ten minutes late is DONE by the
+     clock, so it carries both classes, and left green it would be the one thing on the page that
+     looked like it had gone right — under a headline saying the site is blocked. Same specificity,
+     later wins, no !important needed.
+     The bar itself is deliberately left alone. The time was really spent and the bar is the honest
+     record of it; what was missed was the deadline, and that is said in words instead. */
+  .target.missed { background: rgba(239,68,68,.08); box-shadow: inset 0 0 0 1px rgba(248,113,113,.38); }
+  .target.missed .tfav { border-color: rgba(248,113,113,.4); }
+  .target.missed .meta { color: #fca5a5; }
+  .target.missed a.tlink { color: #fca5a5; border-bottom-color: rgba(252,165,165,.45); }
+  .target.missed a.tlink:hover, .target.missed a.tlink:focus-visible { color: #fecaca; border-bottom-color: #fecaca; }
+  .target.missed a.go, .target.missed button.go { background: linear-gradient(135deg, #b91c1c, #f87171); color: #fff1f2; }
+  /* Same pill as .nowtag, so the two read as one family of row badges. */
+  .misstag { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase;
+    color: #fecaca; background: rgba(239,68,68,.22); border: 1px solid rgba(248,113,113,.45);
+    padding: 2px 7px; border-radius: 999px; }
+  /* ---- sequence mode ----
+     A row the sequence has not reached yet. Deliberately quieter than .missed above: nothing has gone
+     wrong and nothing has been lost, it simply is not this row's turn — so it is dimmed rather than
+     reddened.
+     A row can be both this and .missed, and they do not fight: that one sets colours and this one sets
+     opacity, so a missed row waiting its turn keeps its red and simply fades with it. Both badges show,
+     which is right — the window really did close AND it really is not this row's turn.
+     The bar and the time are left alone, like they are for a missed window and for the same reason:
+     they are the honest record of what this row will ask for, and fading them would read as "this one
+     no longer counts". */
+  .target.seqlock { opacity: .72; }
+  .target.seqlock .tfav { filter: grayscale(.6); }
+  /* The Open button is replaced by a label on these rows — see rowHtml. Styled like the button it stands
+     in for so the column still lines up, but flat and grey, because it does nothing and must not look
+     like it might. */
+  .target span.go.locked { background: #16233c; color: #94a3b8; box-shadow: inset 0 0 0 1px #24324c;
+    font-weight: 700; cursor: default; }
+  /* Same pill family as .nowtag and .misstag. */
+  .seqtag { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase;
+    color: #cbd5e1; background: rgba(100,116,139,.22); border: 1px solid rgba(148,163,184,.4);
+    padding: 2px 7px; border-radius: 999px; }
+  /* The one step you CAN act on. Cyan, matching the "working on this now" badge's family without being
+     it — that one reports, this one instructs. */
+  .seqtag.mine { color: #bae6fd; background: rgba(56,189,248,.2); border-color: rgba(56,189,248,.5); }
+  /* The time-limit countdown inside a row's meta line. Rewritten once a second by tickGrace, so the
+     digits are tabular — without that the text after it would shuffle left and right as the seconds tick,
+     on the one line somebody is watching. Amber, matching the same countdown on the page card. */
+  .target .meta .gtick { color: #fcd34d; font-variant-numeric: tabular-nums; }
+  .progress { height: 5px; background: #1e293b; border-radius: 999px; overflow: hidden; margin-top: 6px; }
+  /* The colour is set per bar in blocked.js: red at the start, through orange and
+     yellow, to green when it's full. */
+  .progress > div { height: 100%; border-radius: 999px; background: hsl(0 92% 52%); transition: width .4s ease, background .4s ease; }
+  /* Logic connectors between targets on blocked page */
+  .blocked-logic-row { display: flex; align-items: center; justify-content: center; margin: 6px 0; position: relative; }
+  .blocked-logic-row::before { content: ""; position: absolute; left: 16px; right: 16px; height: 1px; background: rgba(51, 65, 85, 0.4); }
+  .blocked-logic-tag { position: relative; z-index: 1; font-size: 10px; font-weight: 800; letter-spacing: .5px; padding: 2px 10px; border-radius: 999px; background: #0b1020; border: 1px solid #1e293b; text-transform: uppercase; }
+  .blocked-logic-tag.and { color: #38bdf8; border-color: rgba(56, 189, 248, 0.35); }
+  .blocked-logic-tag.or { color: #fbbf24; border-color: rgba(251, 191, 36, 0.35); }
+  .quote { color: #cbd5e1; font-size: 14px; font-style: italic; }
+  /* One-line messages, for the times a click has something to explain. */
+  .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    background: #111c33; color: #e2e8f0; border: 1px solid #334155; border-radius: 10px;
+    padding: 10px 16px; font-size: 13px; max-width: 520px; text-align: center; line-height: 1.6;
+    box-shadow: 0 12px 30px rgba(0,0,0,.6); z-index: 9999; animation: toastIn .2s ease both; }
+  .toast b { color: #fde68a; }
+  /* A message that names the one thing to do gets a button for it, rather than leaving
+     you to find the page yourself. */
+  .toast .tbtn { margin-left: 8px; font: inherit; font-weight: 700; cursor: pointer;
+    background: linear-gradient(135deg, #f97316, #eab308); color: #1f2937;
+    border: 0; border-radius: 7px; padding: 5px 10px; white-space: nowrap; }
+  .toast .tbtn:hover { filter: brightness(1.08); }
+  .toast .tbtn:focus-visible { outline: 2px solid #fde68a; outline-offset: 2px; }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  .foot { color: #64748b; font-size: 11px; text-align: center; margin-top: 30px; }
+  /* Info bubble */
+  .tip { position: relative; display: inline-flex; vertical-align: middle; margin-left: 6px; }
+  .tip > .tip-i { width: 18px; height: 18px; border-radius: 50%; background: #1e293b; color: #fbbf24; border: 1px solid #334155; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; cursor: help; display: block; }
+  .tip > .tip-i:hover { background: #f97316; color: #1f2937; }
+  /* Fixed + placed by tip.js, so no ancestor's overflow can clip it. */
+  .tip > .tip-box { position: fixed; left: 0; top: 0; z-index: 9999; width: 300px; background: #111c33; color: #cbd5e1; border: 1px solid #334155; border-radius: 10px; padding: 10px 12px; font-size: 12px; font-weight: 400; line-height: 1.6; text-transform: none; letter-spacing: 0; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,.55); opacity: 0; visibility: hidden; transition: opacity .15s, visibility .15s; }
+  .tip:hover > .tip-box, .tip:focus > .tip-box, .tip:focus-within > .tip-box, .tip.open > .tip-box { opacity: 1; visibility: visible; }
+  .tip .tip-box b { color: #fde68a; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <div class="pill">🔒 Locked</div>
+      <div class="hrow">
+        <!-- The logo of the site you were heading for. Filled in by blocked.js. -->
+        <span class="hfav" id="headIcon" hidden></span>
+        <h1 id="head">Work first.</h1>
+      </div>
+      <!-- The one sentence that matters: how much is left, and that it opens the
+           site named above. No name is repeated here — the headline already said
+           where you were going, and the list below says where to earn it. -->
+      <div class="lead" id="lead"></div>
+      <!-- Only the part of the address the headline can't show: the exact page.
+           Hidden altogether when you were only heading for the site's front page. -->
+      <div class="from" id="fromWrap" hidden><span id="from"></span></div>
+
+      <div class="card">
+        <h2>Finish this to unlock <span class="tip" tabindex="0" role="button" aria-label="More information"><span class="tip-i" aria-hidden="true">?</span><span class="tip-box" role="tooltip">This site is locked until the bar below is full. Do the work, and this page will send you back automatically — no need to refresh.</span></span></h2>
+        <div id="targets"></div>
+      </div>
+
+      <div class="card">
+        <div class="quote" id="quote">"Discipline is choosing between what you want now and what you want most."</div>
+      </div>
+
+      <div class="foot">FocusGate</div>
+    </div>
+  </div>
+  <!-- Tap-to-open for the info bubbles lives in tip.js. An extension page is not
+       allowed to run an inline script, so it cannot live here. -->
+  <script src="settings.js"></script>
+  <script src="tip.js"></script>
+  <script src="blocked.js"></script>
+</body>
+</html>

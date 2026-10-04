@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="facecam.css" />
+</head>
+<body>
+  <div id="wrap">
+    <video id="v" autoplay muted playsinline></video>
+    <!-- Live markers: face box plus a dot on each eye, green while it passes. -->
+    <canvas id="ov"></canvas>
+
+    <!-- The switches fold away behind one opener. They are set-and-forget — you
+         decide once whether you want markers and a beep — but as permanent discs
+         stacked down the left edge of a 134px-wide preview they sat on top of the
+         part of the frame the detector actually cares about: your own face. -->
+    <div class="camtools" id="camtools">
+      <button class="camtog camtoggle" id="camtoolsBtn" type="button"
+              aria-expanded="false" aria-controls="camtoolsList"
+              title="Camera options" aria-label="Camera options">
+        <!-- Two sliders. Deliberately not a gear (the gear inside means something
+             else here) and not three dots, which reads as "more of the same". -->
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path stroke-width="1.9" d="M3.6 8h4.2M12.6 8h7.8"/>
+          <circle cx="10.2" cy="8" r="2.3" stroke-width="1.9"/>
+          <path stroke-width="1.9" d="M3.6 16h8.2M16.6 16h3.8"/>
+          <circle cx="14.2" cy="16" r="2.3" stroke-width="1.9"/>
+        </svg>
+      </button>
+
+      <div class="camtoglist" id="camtoolsList">
+        <button id="ovtog" class="camtog" type="button" aria-pressed="true"
+                title="Tracking markers on/off" aria-label="Tracking markers on or off">
+          <!-- Drawn, not an emoji: an emoji renders thin and off-centre this small.
+               A face held inside tracking corners — the same idea as a phone's
+               face-unlock glyph, and literally what this button draws on the picture:
+               a box round your face, a box round each eye, a dot on each pupil.
+               A plain eye was wrong, and wrong in a way that matters: an eye says
+               "look at something", when you are the one being looked at. It also
+               claimed the wrong scope — these markers are the face box as much as the
+               eyes, so an eye named half of what the button does.
+               Named "tracking" rather than "eye" for the same reason.
+               No slash in the off state, unlike its neighbours. A diagonal across this
+               glyph turns it into the fullscreen icon, which is the exact mistake the
+               Anki extension made and undid. Colour carries the state on its own here:
+               amber on, slate off. The face is the reason this icon isn't something
+               else, so it is never the part that goes away.
+               Thinner strokes than the shared 2.2: there is more inside this one, and
+               at this size it closes up otherwise. -->
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path stroke-width="1.9" d="M3.6 8.9V6a2.4 2.4 0 0 1 2.4-2.4h2.9"/>
+            <path stroke-width="1.9" d="M15.1 3.6H18A2.4 2.4 0 0 1 20.4 6v2.9"/>
+            <path stroke-width="1.9" d="M20.4 15.1V18a2.4 2.4 0 0 1-2.4 2.4h-2.9"/>
+            <path stroke-width="1.9" d="M8.9 20.4H6A2.4 2.4 0 0 1 3.6 18v-2.9"/>
+            <path stroke-width="2.1" d="M9.5 10.2v1.5"/>
+            <path stroke-width="2.1" d="M14.5 10.2v1.5"/>
+            <path stroke-width="1.9" d="M9.6 14.9c1.4 1.3 3.4 1.3 4.8 0"/>
+          </svg>
+        </button>
+        <!-- The beep switch belongs here, where you hear it, not in a settings card. -->
+        <button id="sndtog" class="camtog" type="button" aria-pressed="true"
+                title="Beep when the camera loses me" aria-label="Beep when the camera loses me, on or off">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 9.5h3.2L12 5.2v13.6L7.2 14.5H4z"/>
+            <path class="wave" d="M16 9.2a4 4 0 0 1 0 5.6"/>
+            <path class="wave" d="M18.6 6.6a7.6 7.6 0 0 1 0 10.8"/>
+            <line class="slash" x1="3.5" y1="20.5" x2="20.5" y2="3.5"/>
+          </svg>
+        </button>
+        <!-- The glow around the work page. Switched from here for the same reason as
+             the beep: this is where you are when it matters, and what it reports on
+             is whether the clock is running. -->
+        <button id="glowtog" class="camtog" type="button" aria-pressed="false"
+                title="Glow on the page while time is counting"
+                aria-label="Glow on the page, on or off">
+          <!-- A window with a shine coming off its corner: the window is the thing
+               affected, the sparkles are the effect. A box with four rays around it
+               was the first go, and that is a sun, a brightness slider or a wifi
+               symbol depending on who is looking. The big sparkle deliberately breaks
+               the window's outline, so the two shapes read as one idea rather than as
+               two things standing side by side. -->
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path stroke-width="1.9" d="M13 4.4H5.6A2.4 2.4 0 0 0 3.2 6.8v10.8a2.4 2.4 0 0 0 2.4 2.4h10.8a2.4 2.4 0 0 0 2.4-2.4v-7.4"/>
+            <path stroke-width="2" d="M18.4 2.2v5.6M15.6 5h5.6"/>
+            <path stroke-width="1.7" d="M13.6 10.4v2.8M12.2 11.8H15"/>
+          </svg>
+        </button>
+        <!-- Stop the page's video when the clock stops. Here rather than only in
+             Settings for the same reason as the switches above — this is where you are
+             when it matters, and a lecture running on to an empty chair is something
+             you notice on the page. How far it winds back stays on the settings page:
+             a number needs a box and a label, and neither fits on a 19px disc. -->
+        <button id="mptog" class="camtog" type="button" aria-pressed="true"
+                title="Pause the page's video when the clock stops"
+                aria-label="Pause the page's video when the clock stops, on or off">
+          <!-- Two pause bars with an arrow curling back to them: stop, then step
+               back, in the order it happens. -->
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path stroke-width="2.4" d="M13.4 7.2v9.6M18 7.2v9.6"/>
+            <path stroke-width="1.9" d="M9.4 16.8A6 6 0 1 1 9.4 7.2"/>
+            <path stroke-width="1.9" d="M9.4 3.8v3.4H6"/>
+          </svg>
+        </button>
+        <!-- And start it again by itself once every condition is satisfied. The other half of
+             the disc before it, and it sits next to that disc for the reason all of these are
+             here: the moment auto resume matters is the moment you look back at the camera and
+             find the lecture still frozen, and at that moment you are looking at this frame.
+             Deliberately NOT hidden while auto-pause is off, unlike the equivalent row on the
+             settings page: hiding it would resize the tray as you press the disc beside it, and
+             a row of 19px targets that shifts under the pointer is worse than one disc that is
+             briefly academic. -->
+        <button id="mrtog" class="camtog" type="button" aria-pressed="false"
+                title="Start the video again by itself when the clock comes back (needs auto pause)"
+                aria-label="Auto resume the video when the clock comes back, on or off">
+          <!-- A play triangle with an arrow curling round to it: the mirror of the pause icon
+               beside it, which curls back the other way. The pair reads as one idea — stop and
+               step back, then step in and go — rather than as two unrelated glyphs. -->
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path stroke-width="1.9" d="M13.4 7.6 19 12l-5.6 4.4z"/>
+            <path stroke-width="1.9" d="M9.4 16.8A6 6 0 1 1 9.4 7.2"/>
+            <path stroke-width="1.9" d="M9.4 3.8v3.4H6"/>
+            <line class="slash" x1="3.5" y1="20.5" x2="20.5" y2="3.5"/>
+          </svg>
+        </button>
+        <!-- The way out to the full settings page: everything that needs a number or
+             a label (sensitivity, liveness interval, how far to wind a video back,
+             which sites count) lives there, and there is no room for any of it in a
+             row of 19px discs. Not a switch, so it carries no pressed state and no
+             amber "on" colour. -->
+        <button id="settog" class="camtog camgear" type="button"
+                title="Open FocusGate settings" aria-label="Open FocusGate settings">
+          <!-- The ordinary settings cog: one outline with six square teeth, and a hub
+               inside it. Two earlier goes were both wrong at this size. A ring with eight
+               radial strokes and a hub came out as an asterisk, because the ring was
+               drawn at radius 4.4 of a 24 viewBox — a five-unit gear rendered at thirteen
+               pixels, so the hub filled in and the teeth closed up. Replacing the teeth
+               with the dashes of a thick dashed circle spaced them properly but left the
+               nubs rounded and radial, which is a snowflake, not a cog.
+               A tooth has to be a flat-topped block standing off the body, so it is drawn
+               as one: the outline below walks A→B→C→D per tooth — out along the flank,
+               across the tip, back down the other flank — and then arcs along the root
+               radius to the next tooth. Six teeth at 60° apart, tooth 40° wide at the
+               root and 24° at the tip, which is what gives each one its taper. -->
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path stroke-width="1.7" d="M9.64 5.52 L9.88 2.02 L14.12 2.02 L14.36 5.52
+                     A6.9 6.9 0 0 1 16.44 6.72 L19.58 5.17 L21.70 8.85 L18.80 10.80
+                     A6.9 6.9 0 0 1 18.80 13.20 L21.70 15.15 L19.58 18.83 L16.44 17.28
+                     A6.9 6.9 0 0 1 14.36 18.48 L14.12 21.98 L9.88 21.98 L9.64 18.48
+                     A6.9 6.9 0 0 1 7.56 17.28 L4.42 18.83 L2.30 15.15 L5.20 13.20
+                     A6.9 6.9 0 0 1 5.20 10.80 L2.30 8.85 L4.42 5.17 L7.56 6.72
+                     A6.9 6.9 0 0 1 9.64 5.52 Z"/>
+            <!-- The hub, left open rather than filled: the disc behind this icon is
+                 see-through, so a dot painted in the disc's own colour would sit there as
+                 a lighter blob over the video. -->
+            <circle cx="12" cy="12" r="3.3" stroke-width="1.7"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- What the clock is being credited at right now, while the camera is speeding it up or
+         slowing it down. On the picture rather than on the card outside, because the picture is
+         what decides it: the number and the dashed box you are trying to fill are one thought,
+         and splitting them across two elements makes the box look decorative.
+         Top right. The switches own the top left, and the middle of the frame is where your
+         face has to be — see the note in the CSS about the discs that used to run down the
+         left edge, over the part of the frame the detector reads. -->
+    <span class="pacetag" id="pacetag" hidden>1.0×</span>
+
+    <div id="status">starting…</div>
+  </div>
+  <script src="lib/pico.js"></script>
+  <script src="facecam.js"></script>
+</body>
+</html>
