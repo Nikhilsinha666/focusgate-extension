@@ -1,23 +1,34 @@
 {
-  "version": "1.0",
+  "version": "v1",
   "hooks": [
     {
       "name": "manifest-permission-audit",
-      "event": "pre-commit",
-      "command": "node -e \"const m = require('./manifest.json'); if(!m.manifest_version || m.manifest_version !== 3) throw new Error('Must be Manifest V3'); console.log('Manifest V3 check passed.');\"",
+      "trigger": "PostFileSave",
+      "matcher": "manifest\\.json$",
+      "action": {
+        "type": "command",
+        "command": "node -e \"const m = require('./manifest.json'); if(!m.manifest_version || m.manifest_version !== 3) throw new Error('Must be Manifest V3'); console.log('Manifest V3 check passed.');\""
+      },
       "description": "Verifies manifest structure and permissions conformance."
     },
     {
       "name": "property-test-runner",
-      "event": "pre-push",
-      "command": "node tests/timer-and-urls.property.test.js",
+      "trigger": "PostFileSave",
+      "matcher": "tests/.*\\.js$",
+      "action": {
+        "type": "command",
+        "command": "node tests/timer-and-urls.property.test.js"
+      },
       "description": "Runs invariant property tests across timer and URL parsing logic."
     },
     {
       "name": "privacy-leak-check",
-      "event": "post-edit",
-      "pattern": "**/*.js",
-      "command": "node -e \"console.log('Validating local-only facecam context and storage hygiene...');\"",
+      "trigger": "PostFileSave",
+      "matcher": ".*\\.js$",
+      "action": {
+        "type": "command",
+        "command": "node -e \"console.log('Validating local-only facecam context and storage hygiene...');\""
+      },
       "description": "Ensures no external fetch or analytics endpoints are inadvertently added to facecam code."
     }
   ]

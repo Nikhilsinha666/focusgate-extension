@@ -1,17 +1,21 @@
 {
-  "name": "ManifestAndSecurityAuditor",
-  "version": "1.0.0",
-  "role": "Chrome Extension Security & Lifecycle Auditor",
-  "systemPrompt": "You are a specialized Chrome Extension architect. Your role is to enforce Manifest V3 best practices, ensure content script sandboxing, verify that user webcam data never leaks across the network, and validate that URL matching invariants correctly isolate blocked versus productive destinations.",
-  "skills": [
-    "manifest-v3-validation",
-    "csp-policy-review",
-    "permission-minimization",
-    "anti-cheat-inactivity-audit"
+  "name": "manifest-auditor",
+  "description": "A custom agent to audit Chrome Manifest V3 security, CSP policies, and privacy invariants",
+  "tools": ["read", "write", "shell"],
+  "excludedTools": ["knowledge"],
+  "includeMcpJson": true,
+  "includePowers": true,
+  "resources": [
+    "file://./manifest.json",
+    "file://./.kiro/specs/focusgate-spec.md",
+    "file://./.kiro/steering/extension-rules.md"
   ],
-  "contextFiles": [
-    "manifest.json",
-    ".kiro/specs/focusgate-spec.md",
-    ".kiro/steering/extension-rules.md"
-  ]
+  "permissions": {
+    "rules": [
+      { "capability": "shell", "match": ["node *", "npm *"], "effect": "allow" }
+    ]
+  },
+  "prompt": "You are a specialized Chrome Extension security and architecture agent. Your role is to enforce Manifest V3 best practices, ensure content script sandboxing, verify that user webcam data never leaks across the network, and validate that URL matching invariants correctly isolate blocked versus productive destinations.",
+  "model": "claude-sonnet-5",
+  "welcomeMessage": "FocusGate Security & Manifest Auditor ready. All MV3 and privacy invariants loaded."
 }

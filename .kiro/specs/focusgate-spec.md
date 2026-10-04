@@ -27,3 +27,12 @@ FocusGate is a Chrome Extension (Manifest V3) designed to overcome digital distr
 ### 2.3 Schedule and Reset Architecture
 - **Day-of-Week Mask**: Bitmask or array [Mon..Sun] determining if a target is active on the current calendar day. Inactive targets do not block access to restricted sites.
 - **Daily Reset**: Fully customizable daily reset timestamp (default: 00:00:00). Daily accumulated times roll over and recalculate status atomically.
+
+## 3. Requirements Specification (EARS Notation)
+- **REQ-1 (Distraction Interception)**: WHEN an active target requirement is incomplete and the user navigates to a restricted domain THE SYSTEM SHALL redirect or lock the tab to `blocked.html`.
+- **REQ-2 (Target Accrual)**: WHEN a user actively browses a whitelisted productive target URL THE SYSTEM SHALL decrement the target remaining countdown timer in real-time.
+- **REQ-3 (Inactivity Pause)**: WHEN no user input (`mousemove`, `keydown`, `wheel`) is detected for 30 consecutive seconds THE SYSTEM SHALL pause the target accrual timer until verified user interaction resumes.
+- **REQ-4 (Local Facecam Verification)**: WHEN the facecam feature is enabled and the user's face is verified centered in the bounding box THE SYSTEM SHALL apply a 1.5x study speed multiplier.
+- **REQ-5 (Privacy Boundary)**: WHILE facecam presence verification is active THE SYSTEM SHALL process all image frames strictly in client memory without transmitting external network requests.
+- **REQ-6 (Daily Rollover)**: WHEN the system clock passes the configured daily reset timestamp THE SYSTEM SHALL atomically reset accumulated study times according to the day-of-week schedule mask.
+
